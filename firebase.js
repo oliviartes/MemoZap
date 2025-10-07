@@ -1,20 +1,9 @@
-// Import Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import {
-    getFirestore,
-    collection,
-    addDoc,
-    query,
-    onSnapshot,
-    orderBy,
-    serverTimestamp
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, updateEmail, updatePassword, sendEmailVerification, sendPasswordResetEmail, deleteUser, reauthenticateWithCredential, EmailAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-// Configuração Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAeyyLnVse-vvsRRuNsUsBkaHhCoxC8dmQ",
+  apiKey: "SUA_API_KEY",
   authDomain: "memofuturo.firebaseapp.com",
   projectId: "memofuturo",
   storageBucket: "memofuturo.appspot.com",
@@ -23,19 +12,34 @@ const firebaseConfig = {
   measurementId: "G-3CEEXGN9X6"
 };
 
-// Inicializar Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
-const auth = getAuth(app);
+export const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
 
-// Funções de registro/login
-function registerUser(email, password) {
+export function registerUser(email, password) {
     return createUserWithEmailAndPassword(auth, email, password);
 }
 
-function loginUser(email, password) {
+export function loginUser(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
 }
 
-export { db, auth, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, registerUser, loginUser };
+export async function sendMessage(text) {
+    const user = auth.currentUser;
+    if(!user) throw new Error("Usuário precisa estar logado");
+    await addDoc(collection(db, "messages"), {
+        text,
+        uid: user.uid,
+        email: user.email,
+        timestamp: serverTimestamp()
+    });
+}
+
+export function listenMessages(callback) {
+    const q = query(collection(db, "messages"), orderBy("timestamp"));
+    return onSnapshot(q, snapshot => {
+        const msgs = [];
+        snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() }));
+        callback(msgs);
+    });
+}

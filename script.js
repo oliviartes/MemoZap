@@ -1,47 +1,28 @@
-// -----------------------
-// Importações
-// -----------------------
-import { auth, db, registerUser, loginUser } from "./firebase.js";
-import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } 
-    from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
+import { auth, registerUser, loginUser, sendMessage, listenMessages } from "./firebase.js";
 import { 
     updateProfile, updateEmail, updatePassword, sendEmailVerification, 
-    sendPasswordResetEmail, deleteUser, EmailAuthProvider, reauthenticateWithCredential, 
-    onAuthStateChanged 
+    sendPasswordResetEmail, deleteUser, reauthenticateWithCredential, EmailAuthProvider, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 // -----------------------
-// Elementos do DOM
+// DOM
 // -----------------------
 const msgInput = document.getElementById("msgInput");
 const messagesContainer = document.getElementById("messages");
 const contactsDiv = document.getElementById("contacts");
 
 // -----------------------
-// Coleção Firestore
+// Mensagens em tempo real
 // -----------------------
-const messagesRef = collection(db, "messages");
-
-// -----------------------
-// Exibir mensagens em tempo real
-// -----------------------
-const q = query(messagesRef, orderBy("timestamp"));
-onSnapshot(q, (snapshot) => {
+listenMessages(msgs => {
     messagesContainer.innerHTML = "";
     const user = auth.currentUser;
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        const messageElement = document.createElement("div");
-        messageElement.classList.add("message");
-
-        // Diferenciar mensagens do usuário atual
-        if (user && data.uid === user.uid) {
-            messageElement.classList.add("mine");
-        }
-
-        messageElement.textContent = `${data.email || "Anônimo"}: ${data.text}`;
-        messagesContainer.appendChild(messageElement);
+    msgs.forEach(m => {
+        const div = document.createElement("div");
+        div.classList.add("message");
+        if(user && m.uid === user.uid) div.classList.add("mine");
+        div.textContent = `${m.email || "Anônimo"}: ${m.text}`;
+        messagesContainer.appendChild(div);
     });
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
@@ -49,171 +30,131 @@ onSnapshot(q, (snapshot) => {
 // -----------------------
 // Observador de autenticação
 // -----------------------
-onAuthStateChanged(auth, (user) => {
-    if(user) {
-        console.log("Usuário logado:", user.email);
-    } else {
-        console.log("Usuário deslogado");
-    }
+onAuthStateChanged(auth, user => {
+    if(user) console.log("Usuário logado:", user.email);
+    else console.log("Usuário deslogado");
 });
 
 // -----------------------
-// Funções globais ligadas ao HTML
+// Registro e Login
 // -----------------------
-window.handleRegister = async function() {
+window.handleRegister = async () => {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
-    if(!email || !password) return alert("E-mail e senha são obrigatórios!");
-
-    try {
-        await registerUser(email, password);
-        alert("Usuário registrado com sucesso!");
-    } catch(err) {
-        alert("Erro ao registrar: " + err.message);
-    }
+    if(!email || !password) return alert("E-mail e senha obrigatórios!");
+    try { await registerUser(email, password); alert("Registrado com sucesso!"); }
+    catch(e){ alert("Erro: " + e.message); }
 };
 
-window.handleLogin = async function() {
+window.handleLogin = async () => {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
-    if(!email || !password) return alert("E-mail e senha são obrigatórios!");
-
-    try {
-        await loginUser(email, password);
-        alert("Login realizado com sucesso!");
-    } catch(err) {
-        alert("Erro ao logar: " + err.message);
-    }
+    if(!email || !password) return alert("E-mail e senha obrigatórios!");
+    try { await loginUser(email, password); alert("Login realizado!"); }
+    catch(e){ alert("Erro: " + e.message); }
 };
 
-window.sendMessage = async function() {
-    const msg = msgInput.value.trim();
-    if(!msg) return;
-
-    const user = auth.currentUser;
-    if(!user) return alert("Você precisa estar logado para enviar mensagens.");
-
-    try {
-        await addDoc(messagesRef, {
-            text: msg,
-            timestamp: serverTimestamp(),
-            uid: user.uid,
-            email: user.email
-        });
-        msgInput.value = "";
-    } catch(err) {
-        alert("Erro ao enviar mensagem: " + err.message);
-    }
+// -----------------------
+// Enviar mensagem
+// -----------------------
+window.sendMessage = async () => {
+    const text = msgInput.value.trim();
+    if(!text) return;
+    try { await sendMessage(text); msgInput.value = ""; }
+    catch(e){ alert("Erro: " + e.message); }
 };
 
-window.addContact = function() {
-    const contactName = prompt("Digite o nome do contato:");
-    if(!contactName) return;
-
-    const contactElement = document.createElement("div");
-    contactElement.classList.add("contact");
-    contactElement.textContent = contactName;
-    contactsDiv.appendChild(contactElement);
+// -----------------------
+// Contatos
+// -----------------------
+window.addContact = () => {
+    const name = prompt("Nome do contato:");
+    if(!name) return;
+    const div = document.createElement("div");
+    div.classList.add("contact");
+    div.textContent = name;
+    contactsDiv.appendChild(div);
 };
 
 // -----------------------
 // Atualizar perfil
 // -----------------------
-window.updateUserProfile = async function() {
+window.updateUserProfile = async () => {
     const user = auth.currentUser;
     if(!user) return alert("Você precisa estar logado.");
-
-    const displayName = prompt("Digite seu nome de exibição:", user.displayName || "");
-    const photoURL = prompt("Digite a URL da sua foto:", user.photoURL || "");
-
+    const displayName = prompt("Nome de exibição:", user.displayName || "");
+    const photoURL = prompt("URL da foto:", user.photoURL || "");
     try {
         await updateProfile(user, { displayName, photoURL });
-        alert("Perfil atualizado com sucesso!");
-    } catch(err) {
-        alert("Erro ao atualizar perfil: " + err.message);
-    }
+        alert("Perfil atualizado!");
+    } catch(e) { alert("Erro: " + e.message); }
 };
 
-window.updateUserEmail = async function() {
+// -----------------------
+// Atualizar e-mail
+// -----------------------
+window.updateUserEmail = async () => {
     const user = auth.currentUser;
     if(!user) return alert("Você precisa estar logado.");
-
-    const email = prompt("Digite seu novo e-mail:", user.email);
+    const email = prompt("Novo e-mail:", user.email);
     if(!email) return;
-
-    try {
-        await updateEmail(user, email);
-        alert("E-mail atualizado com sucesso!");
-    } catch(err) {
-        alert("Erro ao atualizar e-mail: " + err.message);
-    }
+    try { await updateEmail(user, email); alert("E-mail atualizado!"); }
+    catch(e) { alert("Erro: " + e.message); }
 };
 
-window.updateUserPassword = async function() {
+// -----------------------
+// Atualizar senha
+// -----------------------
+window.updateUserPassword = async () => {
     const user = auth.currentUser;
     if(!user) return alert("Você precisa estar logado.");
-
-    const password = prompt("Digite sua nova senha:");
+    const password = prompt("Nova senha:");
     if(!password) return;
-
-    try {
-        await updatePassword(user, password);
-        alert("Senha atualizada com sucesso!");
-    } catch(err) {
-        alert("Erro ao atualizar senha: " + err.message);
-    }
+    try { await updatePassword(user, password); alert("Senha atualizada!"); }
+    catch(e) { alert("Erro: " + e.message); }
 };
 
-window.sendVerificationEmail = async function() {
+// -----------------------
+// Enviar e-mail de verificação
+// -----------------------
+window.sendVerificationEmail = async () => {
     const user = auth.currentUser;
     if(!user) return alert("Você precisa estar logado.");
-
-    try {
-        await sendEmailVerification(user);
-        alert("E-mail de verificação enviado!");
-    } catch(err) {
-        alert("Erro ao enviar e-mail de verificação: " + err.message);
-    }
+    try { await sendEmailVerification(user); alert("E-mail de verificação enviado!"); }
+    catch(e) { alert("Erro: " + e.message); }
 };
 
-window.sendResetPasswordEmail = async function() {
+// -----------------------
+// Redefinir senha
+// -----------------------
+window.sendResetPasswordEmail = async () => {
     const email = prompt("Digite seu e-mail:");
     if(!email) return;
-
-    try {
-        await sendPasswordResetEmail(auth, email);
-        alert("E-mail de redefinição de senha enviado!");
-    } catch(err) {
-        alert("Erro ao enviar e-mail: " + err.message);
-    }
+    try { await sendPasswordResetEmail(auth, email); alert("E-mail de redefinição enviado!"); }
+    catch(e) { alert("Erro: " + e.message); }
 };
 
-window.deleteUserAccount = async function() {
+// -----------------------
+// Excluir conta
+// -----------------------
+window.deleteUserAccount = async () => {
     const user = auth.currentUser;
     if(!user) return alert("Você precisa estar logado.");
-
-    try {
-        await deleteUser(user);
-        alert("Conta excluída com sucesso!");
-    } catch(err) {
-        alert("Erro ao excluir conta: " + err.message);
-    }
+    if(!confirm("Tem certeza que quer excluir sua conta?")) return;
+    try { await deleteUser(user); alert("Conta excluída!"); }
+    catch(e) { alert("Erro: " + e.message); }
 };
 
-window.reauthenticateUser = async function() {
+// -----------------------
+// Reautenticação
+// -----------------------
+window.reauthenticateUser = async () => {
     const user = auth.currentUser;
     if(!user) return alert("Você precisa estar logado.");
-
     const email = prompt("Digite seu e-mail novamente:");
     const password = prompt("Digite sua senha novamente:");
     if(!email || !password) return alert("E-mail e senha obrigatórios.");
-
     const credential = EmailAuthProvider.credential(email, password);
-
-    try {
-        await reauthenticateWithCredential(user, credential);
-        alert("Usuário reautenticado com sucesso!");
-    } catch(err) {
-        alert("Erro ao reautenticar: " + err.message);
-    }
+    try { await reauthenticateWithCredential(user, credential); alert("Reautenticado com sucesso!"); }
+    catch(e) { alert("Erro: " + e.message); }
 };
