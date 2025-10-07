@@ -1,67 +1,67 @@
-import { db } from "./firebase.js";
-import { collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+// Importa as funções do firebase.js
+import { registerUser, loginUser } from "./firebase.js";
 
 // Elementos do DOM
-const contactsContainer = document.getElementById("contacts");
-const messagesContainer = document.getElementById("messages");
 const msgInput = document.getElementById("msgInput");
+const messagesContainer = document.getElementById("messages");
 
-let currentContact = null;
+// -----------------------
+// Simples chat (local)
+// -----------------------
+export function sendMessage() {
+    const msg = msgInput.value.trim();
+    if (msg === "") return;
 
-// Função para adicionar contato
+    const messageElement = document.createElement("div");
+    messageElement.classList.add("message");
+    messageElement.textContent = msg;
+    messagesContainer.appendChild(messageElement);
+
+    msgInput.value = "";
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// -----------------------
+// Contatos
+// -----------------------
 export function addContact() {
-    const name = prompt("Digite o nome do contato:");
-    if (!name) return;
-    
-    const contactDiv = document.createElement("div");
-    contactDiv.classList.add("contact");
-    contactDiv.textContent = name;
-    contactDiv.onclick = () => selectContact(name);
-    contactsContainer.appendChild(contactDiv);
+    const contactName = prompt("Digite o nome do contato:");
+    if (!contactName) return;
+
+    const contactsDiv = document.getElementById("contacts");
+    const contactElement = document.createElement("div");
+    contactElement.classList.add("contact");
+    contactElement.textContent = contactName;
+    contactsDiv.appendChild(contactElement);
 }
 
-// Selecionar contato
-function selectContact(name) {
-    currentContact = name;
-    messagesContainer.innerHTML = "";
-    listenMessages(name);
-}
+// -----------------------
+// Autenticação Firebase
+// -----------------------
+export function handleRegister() {
+    const email = prompt("Digite seu e-mail:");
+    const password = prompt("Digite sua senha:");
 
-// Enviar mensagem
-window.sendMessage = async function() {
-    const text = msgInput.value.trim();
-    if (!text || !currentContact) return;
-
-    try {
-        await addDoc(collection(db, "messages"), {
-            contact: currentContact,
-            text: text,
-            timestamp: new Date()
-        });
-        msgInput.value = "";
-    } catch (err) {
-        console.error("Erro ao enviar mensagem:", err);
+    if (!email || !password) {
+        alert("E-mail e senha são obrigatórios!");
+        return;
     }
-};
 
-// Escutar mensagens em tempo real
-function listenMessages(contactName) {
-    const q = query(
-        collection(db, "messages"),
-        orderBy("timestamp")
-    );
+    registerUser(email, password)
+        .then(() => alert("Usuário registrado com sucesso!"))
+        .catch(err => alert("Erro ao registrar: " + err.message));
+}
 
-    onSnapshot(q, (snapshot) => {
-        messagesContainer.innerHTML = "";
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            if (data.contact === contactName) {
-                const msgDiv = document.createElement("div");
-                msgDiv.classList.add("message");
-                msgDiv.textContent = data.text;
-                messagesContainer.appendChild(msgDiv);
-            }
-        });
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    });
+export function handleLogin() {
+    const email = prompt("Digite seu e-mail:");
+    const password = prompt("Digite sua senha:");
+
+    if (!email || !password) {
+        alert("E-mail e senha são obrigatórios!");
+        return;
+    }
+
+    loginUser(email, password)
+        .then(() => alert("Login realizado com sucesso!"))
+        .catch(err => alert("Erro ao logar: " + err.message));
 }
