@@ -1,4 +1,4 @@
-// Importações diretas da CDN (versão web)
+// Importações principais do Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { 
   getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot 
@@ -7,8 +7,9 @@ import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
   onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js"; // <--- novo
 
-// Configuração correta do Firebase
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAeyyLnVse-vvsRRuNsUsBkaHhCoxC8dmQ",
   authDomain: "memofuturo.firebaseapp.com",
@@ -23,6 +24,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const analytics = getAnalytics(app); // <--- inicializando Analytics
 
 // Funções personalizadas
 export function registerUser(email, password) {
