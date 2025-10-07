@@ -1,24 +1,14 @@
-// -----------------------
-// Import Firebase
-// -----------------------
-import { db, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from "./firebase.js";
-import { registerUser, loginUser } from "./firebase.js";
+import { db, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, registerUser, loginUser } from "./firebase.js";
 
-// -----------------------
 // Elementos do DOM
-// -----------------------
 const msgInput = document.getElementById("msgInput");
 const messagesContainer = document.getElementById("messages");
 const contactsDiv = document.getElementById("contacts");
 
-// -----------------------
 // Coleção Firestore
-// -----------------------
 const messagesRef = collection(db, "messages");
 
-// -----------------------
 // Exibir mensagens em tempo real
-// -----------------------
 const q = query(messagesRef, orderBy("timestamp"));
 onSnapshot(q, (snapshot) => {
     messagesContainer.innerHTML = "";
@@ -32,10 +22,8 @@ onSnapshot(q, (snapshot) => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
 
-// -----------------------
-// Enviar mensagem
-// -----------------------
-export function sendMessage() {
+// Funções globais para HTML
+window.sendMessage = function() {
     const msg = msgInput.value.trim();
     if (!msg) return;
 
@@ -47,12 +35,9 @@ export function sendMessage() {
     }).catch(err => {
         alert("Erro ao enviar mensagem: " + err.message);
     });
-}
+};
 
-// -----------------------
-// Contatos
-// -----------------------
-export function addContact() {
+window.addContact = function() {
     const contactName = prompt("Digite o nome do contato:");
     if (!contactName) return;
 
@@ -60,12 +45,9 @@ export function addContact() {
     contactElement.classList.add("contact");
     contactElement.textContent = contactName;
     contactsDiv.appendChild(contactElement);
-}
+};
 
-// -----------------------
-// Registro de usuário
-// -----------------------
-export function handleRegister() {
+window.handleRegister = function() {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
     if (!email || !password) {
@@ -76,12 +58,9 @@ export function handleRegister() {
     registerUser(email, password)
         .then(() => alert("Usuário registrado com sucesso!"))
         .catch(err => alert("Erro ao registrar: " + err.message));
-}
+};
 
-// -----------------------
-// Login de usuário
-// -----------------------
-export function handleLogin() {
+window.handleLogin = function() {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
     if (!email || !password) {
@@ -92,4 +71,4 @@ export function handleLogin() {
     loginUser(email, password)
         .then(() => alert("Login realizado com sucesso!"))
         .catch(err => alert("Erro ao logar: " + err.message));
-}
+};
