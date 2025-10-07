@@ -1,24 +1,52 @@
-// Importa funções do Firebase
+// -----------------------
+// Import Firebase
+// -----------------------
+import { db, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from "./firebase.js";
 import { registerUser, loginUser } from "./firebase.js";
 
+// -----------------------
 // Elementos do DOM
+// -----------------------
 const msgInput = document.getElementById("msgInput");
 const messagesContainer = document.getElementById("messages");
+const contactsDiv = document.getElementById("contacts");
 
 // -----------------------
-// Chat simples (local)
+// Coleção Firestore
+// -----------------------
+const messagesRef = collection(db, "messages");
+
+// -----------------------
+// Exibir mensagens em tempo real
+// -----------------------
+const q = query(messagesRef, orderBy("timestamp"));
+onSnapshot(q, (snapshot) => {
+    messagesContainer.innerHTML = "";
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const messageElement = document.createElement("div");
+        messageElement.classList.add("message");
+        messageElement.textContent = data.text;
+        messagesContainer.appendChild(messageElement);
+    });
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+});
+
+// -----------------------
+// Enviar mensagem
 // -----------------------
 export function sendMessage() {
     const msg = msgInput.value.trim();
-    if (msg === "") return;
+    if (!msg) return;
 
-    const messageElement = document.createElement("div");
-    messageElement.classList.add("message");
-    messageElement.textContent = msg;
-    messagesContainer.appendChild(messageElement);
-
-    msgInput.value = "";
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    addDoc(messagesRef, {
+        text: msg,
+        timestamp: serverTimestamp()
+    }).then(() => {
+        msgInput.value = "";
+    }).catch(err => {
+        alert("Erro ao enviar mensagem: " + err.message);
+    });
 }
 
 // -----------------------
@@ -28,7 +56,6 @@ export function addContact() {
     const contactName = prompt("Digite o nome do contato:");
     if (!contactName) return;
 
-    const contactsDiv = document.getElementById("contacts");
     const contactElement = document.createElement("div");
     contactElement.classList.add("contact");
     contactElement.textContent = contactName;
@@ -36,12 +63,11 @@ export function addContact() {
 }
 
 // -----------------------
-// Autenticação Firebase
+// Registro de usuário
 // -----------------------
 export function handleRegister() {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
-
     if (!email || !password) {
         alert("E-mail e senha são obrigatórios!");
         return;
@@ -52,10 +78,12 @@ export function handleRegister() {
         .catch(err => alert("Erro ao registrar: " + err.message));
 }
 
+// -----------------------
+// Login de usuário
+// -----------------------
 export function handleLogin() {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
-
     if (!email || !password) {
         alert("E-mail e senha são obrigatórios!");
         return;
@@ -65,11 +93,3 @@ export function handleLogin() {
         .then(() => alert("Login realizado com sucesso!"))
         .catch(err => alert("Erro ao logar: " + err.message));
 }
-
-// -----------------------
-// Tornando funções globais para HTML
-// -----------------------
-window.sendMessage = sendMessage;
-window.addContact = addContact;
-window.login = handleLogin;
-window.register = handleRegister;
