@@ -29,10 +29,17 @@ const messagesRef = collection(db, "messages");
 const q = query(messagesRef, orderBy("timestamp"));
 onSnapshot(q, (snapshot) => {
     messagesContainer.innerHTML = "";
+    const user = auth.currentUser;
     snapshot.forEach(doc => {
         const data = doc.data();
         const messageElement = document.createElement("div");
         messageElement.classList.add("message");
+
+        // Diferenciar mensagens do usuário atual
+        if (user && data.uid === user.uid) {
+            messageElement.classList.add("mine");
+        }
+
         messageElement.textContent = `${data.email || "Anônimo"}: ${data.text}`;
         messagesContainer.appendChild(messageElement);
     });
