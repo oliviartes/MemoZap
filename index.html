@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MemoZap - Rafa</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>MemoZap 💬</h2>
+            <div id="contacts"></div>
+            <button onclick="addContact()">+ Adicionar Contato</button>
+        </div>
+        <div class="chat">
+            <div id="messages" class="messages"></div>
+            <div class="input-area">
+                <input id="msgInput" type="text" placeholder="Digite uma mensagem..." />
+                <button onclick="sendMessage()">Enviar</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
