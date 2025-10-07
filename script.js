@@ -1,4 +1,4 @@
-// Importa as funções do firebase.js
+// Importa funções do Firebase
 import { registerUser, loginUser } from "./firebase.js";
 
 // Elementos do DOM
@@ -6,7 +6,7 @@ const msgInput = document.getElementById("msgInput");
 const messagesContainer = document.getElementById("messages");
 
 // -----------------------
-// Simples chat (local)
+// Chat simples (local)
 // -----------------------
 export function sendMessage() {
     const msg = msgInput.value.trim();
@@ -65,3 +65,11 @@ export function handleLogin() {
         .then(() => alert("Login realizado com sucesso!"))
         .catch(err => alert("Erro ao logar: " + err.message));
 }
+
+// -----------------------
+// Tornando funções globais para HTML
+// -----------------------
+window.sendMessage = sendMessage;
+window.addContact = addContact;
+window.login = handleLogin;
+window.register = handleRegister;
