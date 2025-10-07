@@ -30,11 +30,8 @@ window.sendMessage = function() {
     addDoc(messagesRef, {
         text: msg,
         timestamp: serverTimestamp()
-    }).then(() => {
-        msgInput.value = "";
-    }).catch(err => {
-        alert("Erro ao enviar mensagem: " + err.message);
-    });
+    }).then(() => { msgInput.value = ""; })
+      .catch(err => { alert("Erro ao enviar mensagem: " + err.message); });
 };
 
 window.addContact = function() {
@@ -50,10 +47,7 @@ window.addContact = function() {
 window.handleRegister = function() {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
-    if (!email || !password) {
-        alert("E-mail e senha são obrigatórios!");
-        return;
-    }
+    if (!email || !password) { alert("E-mail e senha são obrigatórios!"); return; }
 
     registerUser(email, password)
         .then(() => alert("Usuário registrado com sucesso!"))
@@ -63,10 +57,7 @@ window.handleRegister = function() {
 window.handleLogin = function() {
     const email = prompt("Digite seu e-mail:");
     const password = prompt("Digite sua senha:");
-    if (!email || !password) {
-        alert("E-mail e senha são obrigatórios!");
-        return;
-    }
+    if (!email || !password) { alert("E-mail e senha são obrigatórios!"); return; }
 
     loginUser(email, password)
         .then(() => alert("Login realizado com sucesso!"))
