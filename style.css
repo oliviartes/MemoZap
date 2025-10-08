@@ -1,76 +1,126 @@
-body, html {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    height: 100%;
+:root{
+  --bg: #f0eee9;
+  --sidebar-bg: #055e58;
+  --accent: #23a6a0;
+  --muted: #7a7a7a;
+  --text: #222;
+  --white: #ffffff;
+  --msg-me: #05635f;
+  --msg-other: #e6e6e6;
+  --radius: 12px;
+  --glass: rgba(255,255,255,0.06);
 }
 
-.container {
-    display: flex;
-    height: 100vh;
+/* Dark theme variables (applied with .dark on body) */
+body.dark {
+  --bg: #0f1720;
+  --sidebar-bg: #073a36;
+  --accent: #2fb7ae;
+  --muted: #9aa4ad;
+  --text: #e6eef0;
+  --white: #0a0a0b;
+  --msg-me: #0b8a7d;
+  --msg-other: #1a2026;
+  --glass: rgba(255,255,255,0.03);
 }
 
-.sidebar {
-    width: 250px;
-    background-color: #117a65;
-    color: white;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    gap: 10px;
+*{box-sizing:border-box}
+html,body,#app{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);}
+
+.app{display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{
+  width:320px;
+  min-width:260px;
+  background:linear-gradient(180deg,var(--sidebar-bg),#044d47);
+  color:var(--white);
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  box-shadow: 4px 0 18px rgba(0,0,0,0.12);
 }
 
-.sidebar h2 {
-    margin: 0 0 20px 0;
-    font-size: 24px;
+.sidebar-header{display:flex;align-items:center;justify-content:space-between}
+.brand{font-size:20px;margin:0;display:flex;align-items:center;gap:8px;font-weight:700}
+.brand-emoji{font-size:18px}
+.icon-btn{background:transparent;border:none;color:inherit;cursor:pointer;font-size:18px;padding:6px;border-radius:8px}
+.icon-btn:hover{background:var(--glass)}
+
+.controls{display:flex;gap:8px;flex-direction:column}
+.primary-btn, .secondary-btn, .action-btn{
+  border:none;padding:10px 12px;border-radius:10px;font-weight:600;cursor:pointer;
+}
+.primary-btn{background:var(--white);color:var(--sidebar-bg)}
+.secondary-btn{background:transparent;border:1px solid rgba(255,255,255,0.08);color:var(--white)}
+.action-btn{background:transparent;text-align:left;color:var(--white);padding:8px;border-radius:8px}
+
+.contacts-section{margin-top:6px;flex:1;display:flex;flex-direction:column;overflow:hidden}
+.section-title{font-size:13px;color:rgba(255,255,255,0.85);margin:8px 0 6px 0}
+.contacts-list{overflow:auto;padding-right:6px}
+.contacts-list::-webkit-scrollbar{width:8px}
+.contacts-list::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:8px}
+
+/* Contact item */
+.contact-item{
+  display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.06);cursor:pointer;transition:all .12s ease;
+}
+.contact-item:hover{transform:translateY(-2px);background:rgba(255,255,255,0.09)}
+.avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--white);color:var(--sidebar-bg);font-weight:700}
+.avatar.small{width:36px;height:36px;font-size:14px}
+.contact-meta{display:flex;flex-direction:column}
+.contact-meta .name{font-weight:600}
+.contact-meta .sub{font-size:12px;color:rgba(255,255,255,0.75)}
+
+/* MAIN / CHAT */
+.main{flex:1;display:flex;flex-direction:column}
+.chat-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(0,0,0,0.05);background:linear-gradient(180deg,transparent,rgba(0,0,0,0.02))}
+.chat-header-left{display:flex;align-items:center;gap:12px}
+.active-name{font-weight:700}
+.active-status{font-size:12px;color:var(--muted)}
+
+.messages{
+  flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:8px;overflow:auto;
+  background:
+    linear-gradient(0deg, rgba(0,0,0,0.01), transparent 20%),
+    transparent;
+}
+.messages::-webkit-scrollbar{width:10px}
+.messages::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.08);border-radius:8px}
+
+/* message bubbles */
+.msg{
+  max-width:68%;padding:10px 12px;border-radius:14px;word-wrap:break-word;display:inline-block;position:relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.msg.me{align-self:flex-end;background:var(--msg-me);color:var(--white);border-bottom-right-radius:6px}
+.msg.other{align-self:flex-start;background:var(--msg-other);color:var(--text);border-bottom-left-radius:6px}
+.msg .meta{font-size:11px;color:rgba(0,0,0,0.45);margin-top:6px;text-align:right}
+.msg img{border-radius:10px;max-width:300px;display:block}
+
+/* composer */
+.composer{
+  display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid rgba(0,0,0,0.05);background:var(--bg)
+}
+.composer-left{display:flex;gap:8px;align-items:center}
+.icon-compose{background:var(--accent);border:none;color:var(--white);padding:8px;border-radius:999px;cursor:pointer;font-size:16px}
+.icon-compose:hover{opacity:0.95}
+#msgInput{flex:1;padding:12px 14px;border-radius:28px;border:1px solid rgba(0,0,0,0.08);font-size:15px}
+.send-btn{background:var(--msg-me);border:none;color:var(--white);padding:10px 16px;border-radius:999px;cursor:pointer;font-weight:700}
+.send-btn:hover{opacity:0.95}
+
+/* Responsive */
+@media (max-width:900px){
+  .sidebar{width:260px}
+}
+@media (max-width:700px){
+  .sidebar{display:none}
+  .app{flex-direction:column}
+  .main{height:100vh}
+  .composer{padding:10px}
+  .messages{padding:12px}
 }
 
-.sidebar button {
-    background-color: #48c9b0;
-    color: white;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    border-radius: 5px;
-}
-
-.sidebar button:hover {
-    background-color: #1abc9c;
-}
-
-.chat-area {
-    flex: 1;
-    background-color: #eae2dc;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 10px;
-}
-
-.messages {
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 10px;
-}
-
-.input-area {
-    display: flex;
-    gap: 10px;
-}
-
-.input-area input {
-    flex: 1;
-    padding: 10px;
-    border-radius: 20px;
-    border: 1px solid #ccc;
-}
-
-.input-area button {
-    background-color: #117a65;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
-    cursor: pointer;
-}
+/* small helpers */
+.kv{font-size:12px;color:var(--muted)}
