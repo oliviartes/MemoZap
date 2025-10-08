@@ -1,73 +1,30 @@
-// messages.js
-import { db, auth } from "./firebaseConfig.js";
-import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { formatTimestamp } from "./utils.js";
+import { db } from './firebaseConfig.js';
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// 🔹 Enviar mensagem
 export async function sendMessage(contactEmail, text) {
-  if (!auth.currentUser) return alert("Faça login primeiro!");
-  if (!contactEmail) return alert("Selecione um contato!");
-
   try {
     await addDoc(collection(db, "messages"), {
-      from: auth.currentUser.email,
       to: contactEmail,
       text,
-      timestamp: serverTimestamp(),
-      liked: false,
+      timestamp: serverTimestamp()
     });
-  } catch (error) {
-    console.error("Erro ao enviar mensagem:", error);
-  }
+  } catch(err) { console.error(err); }
 }
 
-// 🔹 Escutar mensagens em tempo real
-export function listenMessages(contactEmail, container) {
-  if (!auth.currentUser || !contactEmail) return;
-
+export function listenMessages(contactEmail) {
   const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-  onSnapshot(q, (snapshot) => {
-    container.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const msg = doc.data();
-      if (
-        (msg.from === auth.currentUser.email && msg.to === contactEmail) ||
-        (msg.from === contactEmail && msg.to === auth.currentUser.email)
-      ) {
-        const div = document.createElement("div");
-        div.classList.add("message");
-        div.classList.add(
-          msg.from === auth.currentUser.email ? "sent" : "received"
-        );
-
-        div.innerHTML = `
-          <p>${msg.text}</p>
-          <small>${formatTimestamp(msg.timestamp)}</small>
-          <button class="like-btn">${msg.liked ? "❤️" : "🤍"}</button>
-        `;
-
-        // Curtir mensagem
-        const likeBtn = div.querySelector(".like-btn");
-        likeBtn.addEventListener("click", async () => {
-          await updateMessageLike(doc.id, !msg.liked);
-        });
-
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+  onSnapshot(q, snapshot => {
+    const messagesDiv = document.getElementById("messages");
+    messagesDiv.innerHTML = '';
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      if(data.to === contactEmail) {
+        const div = document.createElement('div');
+        div.textContent = data.text;
+        div.className = 'message';
+        messagesDiv.appendChild(div);
       }
     });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
-}
-
-// 🔹 Atualizar curtida
-async function updateMessageLike(id, liked) {
-  const docRef = collection(db, "messages").doc(id);
-  await docRef.update({ liked });
 }

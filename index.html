@@ -21,12 +21,20 @@
         <button id="themeToggle" class="icon-btn" title="Alternar tema">🌓</button>
       </header>
 
+      <!-- LOGIN / REGISTRO -->
       <section class="controls">
+        <input type="email" id="loginEmail" placeholder="Email" />
+        <input type="password" id="loginPassword" placeholder="Senha" />
         <button id="loginBtn" class="primary-btn">Entrar</button>
+
+        <input type="email" id="registerEmail" placeholder="Email" />
+        <input type="password" id="registerPassword" placeholder="Senha" />
         <button id="registerBtn" class="secondary-btn">Registrar</button>
       </section>
 
+      <!-- AÇÕES DO USUÁRIO -->
       <section class="actions">
+        <input type="email" id="addContactInput" placeholder="Email do contato" />
         <button id="addContactBtn" class="action-btn">+ Adicionar Contato</button>
         <button id="updateProfileBtn" class="action-btn">Atualizar Perfil</button>
         <button id="updateEmailBtn" class="action-btn">Atualizar E-mail</button>
@@ -35,6 +43,7 @@
         <button id="resetPasswordBtn" class="action-btn">Redefinir Senha</button>
       </section>
 
+      <!-- LISTA DE CONTATOS -->
       <section class="contacts-section">
         <h2 class="section-title">Contatos</h2>
         <div id="contactsList" class="contacts-list">
@@ -67,14 +76,15 @@
         <!-- mensagens serão injetadas aqui -->
       </div>
 
-      <!-- NOVA ÁREA DE ENTRADA -->
+      <!-- ÁREA DE ENTRADA -->
       <div class="input-area">
         <input type="file" id="fileInput" hidden />
-        <button id="uploadBtn" title="Anexar imagem">📎</button>
+        <button id="uploadBtn" title="Anexar arquivo">📎</button>
         <input type="text" id="msgInput" placeholder="Digite uma mensagem..." />
-        <button id="sendBtn">Enviar</button>
+        <button id="sendBtn" disabled>Enviar</button>
       </div>
     </main>
+
   </div>
 
   <!-- Script principal -->
