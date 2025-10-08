@@ -1,3 +1,4 @@
+// ---------------- IMPORTS ----------------
 import { auth, db, analytics } from './firebaseConfig.js';
 import { listenContacts, addContact } from './contacts.js';
 import { uploadFile } from './upload.js';
@@ -10,7 +11,7 @@ import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { logEvent } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
 
-// ------------------ ELEMENTOS ------------------
+// ---------------- ELEMENTOS DOM ----------------
 const contactsContainer = document.getElementById("contactsList");
 const addContactBtn = document.getElementById("addContactBtn");
 const addContactInput = document.getElementById("addContactInput");
@@ -22,24 +23,19 @@ const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
 
-const loginEmail = document.getElementById('loginEmail');
-const loginPassword = document.getElementById('loginPassword');
 const loginBtn = document.getElementById('loginBtn');
-
-const registerEmail = document.getElementById('registerEmail');
-const registerPassword = document.getElementById('registerPassword');
 const registerBtn = document.getElementById('registerBtn');
-
 const updateProfileBtn = document.getElementById('updateProfileBtn');
 const updateEmailBtn = document.getElementById('updateEmailBtn');
 const updatePasswordBtn = document.getElementById('updatePasswordBtn');
 const sendVerificationBtn = document.getElementById('sendVerificationBtn');
 const resetPasswordBtn = document.getElementById('resetPasswordBtn');
 
+// ---------------- VARIÁVEIS ----------------
 let currentUser = null;
 let selectedContactEmail = null;
 
-// ------------------ CONTATOS ------------------
+// ---------------- CONTATOS ----------------
 listenContacts(contactsContainer, (contact) => {
     selectedContactEmail = contact.email;
     document.getElementById('activeName').textContent = contact.displayName || contact.email;
@@ -52,10 +48,11 @@ addContactBtn.addEventListener("click", () => {
         addContact(email);
         addContactInput.value = "";
         logEvent(analytics, 'add_contact', { email });
+        alert(`Contato ${email} adicionado!`);
     }
 });
 
-// ------------------ UPLOAD ------------------
+// ---------------- UPLOAD ----------------
 uploadBtn.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
@@ -63,10 +60,11 @@ fileInput.addEventListener("change", (e) => {
     if (file) {
         uploadFile(selectedContactEmail, file);
         logEvent(analytics, 'upload_file', { to: selectedContactEmail, fileName: file.name });
+        alert(`Arquivo ${file.name} enviado para ${selectedContactEmail}!`);
     }
 });
 
-// ------------------ MENSAGENS ------------------
+// ---------------- MENSAGENS ----------------
 function addMessage(text, from = 'user') {
     const msg = document.createElement('div');
     msg.textContent = text;
@@ -95,7 +93,7 @@ async function sendMessage(text) {
         });
         logEvent(analytics, 'send_message', { to: selectedContactEmail, textLength: text.length });
     } catch (err) {
-        console.error(err);
+        console.error("Erro ao enviar mensagem:", err);
     }
 }
 
@@ -123,32 +121,40 @@ sendBtn.addEventListener('click', async () => {
 msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendBtn.click(); });
 msgInput.addEventListener('input', () => { sendBtn.disabled = msgInput.value.trim() === ''; });
 
-// ------------------ AUTENTICAÇÃO ------------------
+// ---------------- AUTENTICAÇÃO ----------------
 loginBtn.addEventListener('click', async () => {
+    const email = prompt("Digite seu email:");
+    const password = prompt("Digite sua senha:");
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
         currentUser = userCredential.user;
         alert(`Bem-vindo, ${currentUser.email}`);
         listenMessages();
         logEvent(analytics, 'login', { method: 'email', email: currentUser.email });
-    } catch(err) { alert("Erro no login: " + err.message); }
+    } catch(err) {
+        alert("Erro no login: " + err.message);
+    }
 });
 
 registerBtn.addEventListener('click', async () => {
+    const email = prompt("Digite seu email:");
+    const password = prompt("Digite sua senha:");
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, registerEmail.value, registerPassword.value);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         currentUser = userCredential.user;
-        alert(`Conta criada: ${currentUser.email}`);
+        alert(`Cadastro com sucesso: ${currentUser.email}`);
         listenMessages();
         logEvent(analytics, 'sign_up', { method: 'email', email: currentUser.email });
-    } catch(err) { alert("Erro ao registrar: " + err.message); }
+    } catch(err) {
+        alert("Erro ao registrar: " + err.message);
+    }
 });
 
 updateProfileBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     const displayName = prompt("Digite novo nome:");
-    try { 
-        await updateProfile(currentUser, { displayName }); 
+    try {
+        await updateProfile(currentUser, { displayName });
         alert("Perfil atualizado!");
         logEvent(analytics, 'update_profile', { email: currentUser.email });
     } catch(err) { alert(err.message); }
@@ -157,8 +163,8 @@ updateProfileBtn.addEventListener('click', async () => {
 updateEmailBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     const newEmail = prompt("Digite novo email:");
-    try { 
-        await updateEmail(currentUser, newEmail); 
+    try {
+        await updateEmail(currentUser, newEmail);
         alert("Email atualizado!");
         logEvent(analytics, 'update_email', { oldEmail: currentUser.email, newEmail });
     } catch(err) { alert(err.message); }
@@ -167,8 +173,8 @@ updateEmailBtn.addEventListener('click', async () => {
 updatePasswordBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     const newPass = prompt("Digite nova senha:");
-    try { 
-        await updatePassword(currentUser, newPass); 
+    try {
+        await updatePassword(currentUser, newPass);
         alert("Senha atualizada!");
         logEvent(analytics, 'update_password', { email: currentUser.email });
     } catch(err) { alert(err.message); }
@@ -176,8 +182,8 @@ updatePasswordBtn.addEventListener('click', async () => {
 
 sendVerificationBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
-    try { 
-        await sendEmailVerification(currentUser); 
+    try {
+        await sendEmailVerification(currentUser);
         alert("Email de verificação enviado!");
         logEvent(analytics, 'send_verification', { email: currentUser.email });
     } catch(err) { alert(err.message); }
@@ -185,9 +191,9 @@ sendVerificationBtn.addEventListener('click', async () => {
 
 resetPasswordBtn.addEventListener('click', async () => {
     const email = prompt("Digite seu email para resetar a senha:");
-    try { 
-        await sendPasswordResetEmail(auth, email); 
-        alert("Email enviado!");
+    try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Email de redefinição enviado!");
         logEvent(analytics, 'reset_password', { email });
     } catch(err) { alert(err.message); }
 });
