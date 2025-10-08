@@ -23,8 +23,14 @@ const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
 
+const loginEmailInput = document.getElementById('loginEmail');
+const loginPasswordInput = document.getElementById('loginPassword');
 const loginBtn = document.getElementById('loginBtn');
+
+const registerEmailInput = document.getElementById('registerEmail');
+const registerPasswordInput = document.getElementById('registerPassword');
 const registerBtn = document.getElementById('registerBtn');
+
 const updateProfileBtn = document.getElementById('updateProfileBtn');
 const updateEmailBtn = document.getElementById('updateEmailBtn');
 const updatePasswordBtn = document.getElementById('updatePasswordBtn');
@@ -43,29 +49,31 @@ listenContacts(contactsContainer, (contact) => {
 });
 
 addContactBtn.addEventListener("click", () => {
+    if (!currentUser) return alert("Faça login primeiro!");
     const email = addContactInput.value.trim();
-    if (email) {
-        addContact(email);
-        addContactInput.value = "";
-        logEvent(analytics, 'add_contact', { email });
-        alert(`Contato ${email} adicionado!`);
-    }
+    if (!email) return alert("Digite um email válido!");
+    addContact(email);
+    addContactInput.value = "";
+    logEvent(analytics, 'add_contact', { email });
+    alert(`Contato ${email} adicionado!`);
 });
 
 // ---------------- UPLOAD ----------------
 uploadBtn.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
+    if (!currentUser) return alert("Faça login primeiro!");
     if (!selectedContactEmail) return alert("Selecione um contato antes de enviar o arquivo!");
     if (file) {
         uploadFile(selectedContactEmail, file);
         logEvent(analytics, 'upload_file', { to: selectedContactEmail, fileName: file.name });
         alert(`Arquivo ${file.name} enviado para ${selectedContactEmail}!`);
+        fileInput.value = ""; // limpa seleção
     }
 });
 
 // ---------------- MENSAGENS ----------------
-function addMessage(text, from = 'user') {
+function addMessage(text, from = 'self') {
     const msg = document.createElement('div');
     msg.textContent = text;
     msg.style.margin = '5px 0';
@@ -73,16 +81,16 @@ function addMessage(text, from = 'user') {
     msg.style.borderRadius = '15px';
     msg.style.maxWidth = '60%';
     msg.style.wordWrap = 'break-word';
-    msg.style.alignSelf = from === 'user' ? 'flex-end' : 'flex-start';
-    msg.style.background = from === 'user' ? '#05635f' : '#ccc';
-    msg.style.color = from === 'user' ? '#fff' : '#000';
+    msg.style.alignSelf = from === 'self' ? 'flex-end' : 'flex-start';
+    msg.style.background = from === 'self' ? '#05635f' : '#ccc';
+    msg.style.color = from === 'self' ? '#fff' : '#000';
     messagesDiv.appendChild(msg);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 async function sendMessage(text) {
     if (!currentUser) return alert("Faça login primeiro!");
-    if (!selectedContactEmail) return alert("Selecione um contato para enviar a mensagem!");
+    if (!selectedContactEmail) return alert("Selecione um contato!");
     try {
         await addDoc(collection(db, "messages"), {
             text,
@@ -94,18 +102,20 @@ async function sendMessage(text) {
         logEvent(analytics, 'send_message', { to: selectedContactEmail, textLength: text.length });
     } catch (err) {
         console.error("Erro ao enviar mensagem:", err);
+        alert("Erro ao enviar mensagem!");
     }
 }
 
 function listenMessages() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
-        messagesDiv.innerHTML = '';
-        snapshot.forEach(doc => {
-            const msgData = doc.data();
-            if (!currentUser) return;
-            if(msgData.toEmail === currentUser.email || msgData.email === currentUser.email) {
-                addMessage(msgData.text, msgData.uid === currentUser.uid ? 'user' : 'bot');
+        snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+                const msgData = change.doc.data();
+                if (!currentUser) return;
+                if (msgData.toEmail === currentUser.email || msgData.email === currentUser.email) {
+                    addMessage(msgData.text, msgData.uid === currentUser.uid ? 'self' : 'other');
+                }
             }
         });
     });
@@ -123,8 +133,9 @@ msgInput.addEventListener('input', () => { sendBtn.disabled = msgInput.value.tri
 
 // ---------------- AUTENTICAÇÃO ----------------
 loginBtn.addEventListener('click', async () => {
-    const email = prompt("Digite seu email:");
-    const password = prompt("Digite sua senha:");
+    const email = loginEmailInput.value.trim();
+    const password = loginPasswordInput.value.trim();
+    if (!email || !password) return alert("Preencha email e senha!");
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         currentUser = userCredential.user;
@@ -137,8 +148,9 @@ loginBtn.addEventListener('click', async () => {
 });
 
 registerBtn.addEventListener('click', async () => {
-    const email = prompt("Digite seu email:");
-    const password = prompt("Digite sua senha:");
+    const email = registerEmailInput.value.trim();
+    const password = registerPasswordInput.value.trim();
+    if (!email || !password) return alert("Preencha email e senha!");
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         currentUser = userCredential.user;
@@ -151,8 +163,9 @@ registerBtn.addEventListener('click', async () => {
 });
 
 updateProfileBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
+    if (!currentUser) return alert("Faça login primeiro!");
     const displayName = prompt("Digite novo nome:");
+    if (!displayName) return;
     try {
         await updateProfile(currentUser, { displayName });
         alert("Perfil atualizado!");
@@ -161,8 +174,9 @@ updateProfileBtn.addEventListener('click', async () => {
 });
 
 updateEmailBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
+    if (!currentUser) return alert("Faça login primeiro!");
     const newEmail = prompt("Digite novo email:");
+    if (!newEmail) return;
     try {
         await updateEmail(currentUser, newEmail);
         alert("Email atualizado!");
@@ -171,8 +185,9 @@ updateEmailBtn.addEventListener('click', async () => {
 });
 
 updatePasswordBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
+    if (!currentUser) return alert("Faça login primeiro!");
     const newPass = prompt("Digite nova senha:");
+    if (!newPass) return;
     try {
         await updatePassword(currentUser, newPass);
         alert("Senha atualizada!");
@@ -181,7 +196,7 @@ updatePasswordBtn.addEventListener('click', async () => {
 });
 
 sendVerificationBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
+    if (!currentUser) return alert("Faça login primeiro!");
     try {
         await sendEmailVerification(currentUser);
         alert("Email de verificação enviado!");
@@ -191,6 +206,7 @@ sendVerificationBtn.addEventListener('click', async () => {
 
 resetPasswordBtn.addEventListener('click', async () => {
     const email = prompt("Digite seu email para resetar a senha:");
+    if (!email) return;
     try {
         await sendPasswordResetEmail(auth, email);
         alert("Email de redefinição enviado!");
