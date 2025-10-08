@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MemoZap — Chat</title>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" role="navigation">
+      <header class="sidebar-header">
+        <h1 class="brand">MemoZap <span class="brand-emoji">💬</span></h1>
+        <button id="themeToggle" class="icon-btn" title="Alternar tema">🌓</button>
+      </header>
+
+      <!-- LOGIN / REGISTRO -->
+      <section class="controls">
+        <input type="email" id="loginEmail" placeholder="Email" />
+        <input type="password" id="loginPassword" placeholder="Senha" />
+        <button id="loginBtn" class="primary-btn">Entrar</button>
+
+        <input type="email" id="registerEmail" placeholder="Email" />
+        <input type="password" id="registerPassword" placeholder="Senha" />
+        <button id="registerBtn" class="secondary-btn">Registrar</button>
+      </section>
+
+      <!-- AÇÕES DO USUÁRIO -->
+      <section class="actions">
+        <input type="email" id="addContactInput" placeholder="Email do contato" />
+        <button id="addContactBtn" class="action-btn">+ Adicionar Contato</button>
+        <button id="updateProfileBtn" class="action-btn">Atualizar Perfil</button>
+        <button id="updateEmailBtn" class="action-btn">Atualizar E-mail</button>
+        <button id="updatePasswordBtn" class="action-btn">Atualizar Senha</button>
+        <button id="sendVerificationBtn" class="action-btn">Enviar Verificação</button>
+        <button id="resetPasswordBtn" class="action-btn">Redefinir Senha</button>
+      </section>
+
+      <!-- LISTA DE CONTATOS -->
+      <section class="contacts-section">
+        <h2 class="section-title">Contatos</h2>
+        <div id="contactsList" class="contacts-list">
+          <!-- contacts will be injected here -->
+        </div>
+      </section>
+
+      <footer class="sidebar-footer">
+        <small>© MemoZap</small>
+      </footer>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div id="activeAvatar" class="avatar small">?</div>
+          <div>
+            <div id="activeName" class="active-name">Selecione um contato</div>
+            <div id="activeStatus" class="active-status">Offline</div>
+          </div>
+        </div>
+        <div class="chat-header-right">
+          <button id="callBtn" class="icon-btn" title="Chamada">📞</button>
+          <button id="moreBtn" class="icon-btn" title="Mais">⋯</button>
+        </div>
+      </div>
+
+      <div id="messages" class="messages" aria-live="polite">
+        <!-- mensagens serão injetadas aqui -->
+      </div>
+
+      <!-- ÁREA DE ENTRADA -->
+      <div class="input-area">
+        <input type="file" id="fileInput" hidden />
+        <button id="uploadBtn" title="Anexar arquivo">📎</button>
+        <input type="text" id="msgInput" placeholder="Digite uma mensagem..." />
+        <button id="sendBtn" disabled>Enviar</button>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Script principal -->
+  <script type="module" src="chat.js"></script>
+</body>
+</html>
