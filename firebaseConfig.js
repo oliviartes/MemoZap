@@ -1,41 +1,21 @@
-// Import Firebase
+// firebaseConfig.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import {
-    getFirestore,
-    collection,
-    addDoc,
-    query,
-    onSnapshot,
-    orderBy,
-    serverTimestamp
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// Configuração Firebase
+// Substitua pelos dados do seu projeto Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAeyyLnVse-vvsRRuNsUsBkaHhCoxC8dmQ",
-  authDomain: "memofuturo.firebaseapp.com",
-  projectId: "memofuturo",
-  storageBucket: "memofuturo.appspot.com",
-  messagingSenderId: "932046699518",
-  appId: "1:932046699518:web:cb6d1e78618689dcbd9eaf",
-  measurementId: "G-3CEEXGN9X6"
+    apiKey: "SUA_API_KEY",
+    authDomain: "SEU_AUTH_DOMAIN",
+    projectId: "SEU_PROJECT_ID",
+    storageBucket: "SEU_STORAGE_BUCKET",
+    messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+    appId: "SEU_APP_ID"
 };
 
-// Inicializar Firebase
+// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
-const auth = getAuth(app);
 
-// Funções de registro/login
-function registerUser(email, password) {
-    return createUserWithEmailAndPassword(auth, email, password);
-}
-
-function loginUser(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
-}
-
-export { db, auth, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, registerUser, loginUser };
+// Exporta Auth e Firestore para outros arquivos
+export const auth = getAuth(app);
+export const db = getFirestore(app);
