@@ -1,11 +1,12 @@
 // chat.js
-import { auth, db } from './firebaseConfig.js';
+import { auth, db, storage } from './firebaseConfig.js';
 import { 
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
     sendEmailVerification, updateProfile, updateEmail, updatePassword
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } 
+import { collection, addDoc, query, orderBy, onSnapshot, where, getDocs, serverTimestamp } 
     from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
 // DOM
 const messagesDiv = document.getElementById('messages');
@@ -25,6 +26,13 @@ const updateEmailBtn = document.getElementById('updateEmailBtn');
 const updatePasswordBtn = document.getElementById('updatePasswordBtn');
 const sendVerificationBtn = document.getElementById('sendVerificationBtn');
 const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+
+// NOVOS ELEMENTOS
+const addContactBtn = document.getElementById('addContactBtn');
+const addContactInput = document.getElementById('addContactInput');
+
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
 
 let currentUser = null;
 
@@ -157,4 +165,50 @@ resetPasswordBtn.addEventListener('click', async () => {
         await auth.sendPasswordResetEmail(email);
         alert("Email de redefinição enviado!");
     } catch(err) { alert(err.message); }
+});
+
+// ---------------- NOVOS BOTÕES ----------------
+
+// Adicionar contato
+addContactBtn.addEventListener('click', async () => {
+    if(!currentUser) return alert("Faça login primeiro!");
+    const contactEmail = addContactInput.value.trim();
+    if(!contactEmail) return alert("Digite o email do contato");
+
+    try {
+        const q = query(collection(db, 'usuarios'), where('email', '==', contactEmail));
+        const querySnapshot = await getDocs(q);
+        if(querySnapshot.empty) return alert('Usuário não encontrado');
+
+        await addDoc(collection(db, 'usuarios', currentUser.uid, 'contatos'), {
+            email: contactEmail,
+            addedAt: new Date()
+        });
+        alert('Contato adicionado com sucesso!');
+        addContactInput.value = '';
+    } catch(err) {
+        console.error(err);
+        alert('Erro ao adicionar contato');
+    }
+});
+
+// Upload de fotos
+uploadBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async () => {
+    if(!currentUser) return alert("Faça login primeiro!");
+    const file = fileInput.files[0];
+    if(!file) return;
+
+    try {
+        const storageRef = ref(storage, `usuarios/${currentUser.uid}/${file.name}`);
+        await uploadBytes(storageRef, file);
+
+        const url = await getDownloadURL(storageRef);
+        addMessage(`📷 Foto enviada: ${url}`, 'user');
+        fileInput.value = '';
+    } catch(err) {
+        console.error(err);
+        alert('Erro ao enviar foto');
+    }
 });
