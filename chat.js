@@ -5,7 +5,7 @@ import {
     sendEmailVerification, updateProfile, updateEmail, updatePassword
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { 
-    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove 
+    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc, updateDoc, arrayUnion 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
@@ -57,9 +57,8 @@ function addMessage(content, from = 'user', isImage = false, msgId = null, likes
         msg.textContent = content;
     }
 
-    // Botão de curtir/descurtir
+    // Botão de curtir
     const likeBtn = document.createElement('button');
-    const isLiked = likes.includes(currentUser?.uid);
     likeBtn.textContent = `👍 ${likes.length}`;
     likeBtn.style.fontSize = '14px';
     likeBtn.style.background = 'transparent';
@@ -68,19 +67,16 @@ function addMessage(content, from = 'user', isImage = false, msgId = null, likes
     likeBtn.style.cursor = 'pointer';
     likeBtn.style.alignSelf = 'flex-end';
     likeBtn.style.marginTop = '5px';
-    likeBtn.style.fontWeight = isLiked ? 'bold' : 'normal';
 
     likeBtn.addEventListener('click', async () => {
         if(!msgId) return;
         try {
             const msgRef = doc(db, 'messages', msgId);
-            if(isLiked) {
-                await updateDoc(msgRef, { likes: arrayRemove(currentUser.uid) });
-            } else {
-                await updateDoc(msgRef, { likes: arrayUnion(currentUser.uid) });
-            }
+            await updateDoc(msgRef, {
+                likes: arrayUnion(currentUser.uid)
+            });
         } catch(err) {
-            console.error("Erro ao curtir/descurtir mensagem:", err);
+            console.error("Erro ao curtir mensagem:", err);
         }
     });
 
@@ -140,11 +136,10 @@ function listenMessages() {
                 (msgData.uidFrom === currentUser.uid && msgData.uidTo === currentChatContact.uid) ||
                 (msgData.uidFrom === currentChatContact.uid && msgData.uidTo === currentUser.uid)
             ) {
-                const likesArray = msgData.likes || [];
                 if(msgData.type === 'image') {
-                    addMessage(msgData.imageUrl, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', true, docSnap.id, likesArray);
+                    addMessage(msgData.imageUrl, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', true, docSnap.id, msgData.likes || []);
                 } else {
-                    addMessage(msgData.text, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', false, docSnap.id, likesArray);
+                    addMessage(msgData.text, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', false, docSnap.id, msgData.likes || []);
                 }
             }
         });
