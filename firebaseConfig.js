@@ -2,20 +2,24 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
 
-// Substitua pelos dados do seu projeto Firebase
+// Configuração do Firebase (seus dados reais)
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_AUTH_DOMAIN",
-    projectId: "SEU_PROJECT_ID",
-    storageBucket: "SEU_STORAGE_BUCKET",
-    messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-    appId: "SEU_APP_ID"
+  apiKey: "AIzaSyAeyyLnVse-vvsRRuNsUsBkaHhCoxC8dmQ",
+  authDomain: "memofuturo.firebaseapp.com",
+  projectId: "memofuturo",
+  storageBucket: "memofuturo.firebasestorage.app",
+  messagingSenderId: "932046699518",
+  appId: "1:932046699518:web:cb6d1e78618689dcbd9eaf",
+  measurementId: "G-3CEEXGN9X6"
 };
 
-// Inicializa Firebase
+// Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
-// Exporta Auth e Firestore para outros arquivos
+// Exporta os módulos principais
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export { analytics };
