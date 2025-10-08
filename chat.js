@@ -5,7 +5,7 @@ import {
     sendEmailVerification, updateProfile, updateEmail, updatePassword
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { 
-    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc 
+    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
@@ -24,7 +24,7 @@ let currentChatContact = null;
 // ------------------ Funções ------------------
 
 // Adicionar mensagem ao chat
-function addMessage(content, from = 'user', isImage = false) {
+function addMessage(content, from = 'user', isImage = false, msgId = null, likes = []) {
     const msg = document.createElement('div');
     msg.style.margin = '5px 0';
     msg.style.padding = '8px 12px';
@@ -34,6 +34,7 @@ function addMessage(content, from = 'user', isImage = false) {
     msg.style.display = 'flex';
     msg.style.flexDirection = 'column';
     msg.style.transition = '0.2s all';
+    msg.style.position = 'relative';
 
     if(from === 'user') {
         msg.style.background = '#05635f';
@@ -56,6 +57,35 @@ function addMessage(content, from = 'user', isImage = false) {
         msg.textContent = content;
     }
 
+    // Botão de curtir/descurtir
+    const likeBtn = document.createElement('button');
+    const isLiked = likes.includes(currentUser?.uid);
+    likeBtn.textContent = `👍 ${likes.length}`;
+    likeBtn.style.fontSize = '14px';
+    likeBtn.style.background = 'transparent';
+    likeBtn.style.border = 'none';
+    likeBtn.style.color = from === 'user' ? '#fff' : '#000';
+    likeBtn.style.cursor = 'pointer';
+    likeBtn.style.alignSelf = 'flex-end';
+    likeBtn.style.marginTop = '5px';
+    likeBtn.style.fontWeight = isLiked ? 'bold' : 'normal';
+
+    likeBtn.addEventListener('click', async () => {
+        if(!msgId) return;
+        try {
+            const msgRef = doc(db, 'messages', msgId);
+            if(isLiked) {
+                await updateDoc(msgRef, { likes: arrayRemove(currentUser.uid) });
+            } else {
+                await updateDoc(msgRef, { likes: arrayUnion(currentUser.uid) });
+            }
+        } catch(err) {
+            console.error("Erro ao curtir/descurtir mensagem:", err);
+        }
+    });
+
+    msg.appendChild(likeBtn);
+
     messagesDiv.appendChild(msg);
     messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
 }
@@ -72,7 +102,8 @@ async function sendMessage(text) {
             emailFrom: currentUser.email,
             emailTo: currentChatContact.email,
             type: 'text',
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            likes: []
         });
     } catch(err) { console.error(err); }
 }
@@ -91,7 +122,8 @@ async function sendImage(file) {
             emailFrom: currentUser.email,
             emailTo: currentChatContact.email,
             type: 'image',
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            likes: []
         });
     } catch(err) { console.error(err); }
 }
@@ -108,16 +140,18 @@ function listenMessages() {
                 (msgData.uidFrom === currentUser.uid && msgData.uidTo === currentChatContact.uid) ||
                 (msgData.uidFrom === currentChatContact.uid && msgData.uidTo === currentUser.uid)
             ) {
-                if(msgData.type === 'image') addMessage(msgData.imageUrl, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', true);
-                else addMessage(msgData.text, msgData.uidFrom === currentUser.uid ? 'user' : 'bot');
+                const likesArray = msgData.likes || [];
+                if(msgData.type === 'image') {
+                    addMessage(msgData.imageUrl, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', true, docSnap.id, likesArray);
+                } else {
+                    addMessage(msgData.text, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', false, docSnap.id, likesArray);
+                }
             }
         });
     });
 }
 
 // ------------------ Eventos ------------------
-
-// Enviar mensagem via botão ou Enter
 sendBtn.addEventListener('click', async () => {
     const text = msgInput.value.trim();
     if(text !== '') { await sendMessage(text); msgInput.value = ''; }
@@ -125,7 +159,6 @@ sendBtn.addEventListener('click', async () => {
 msgInput.addEventListener('keypress', e => { if(e.key === 'Enter') sendBtn.click(); });
 
 // ------------------ Contatos ------------------
-
 async function loadContacts() {
     const sidebar = document.querySelector('.sidebar');
     document.querySelectorAll('.contact-item').forEach(c => c.remove());
@@ -150,7 +183,6 @@ async function loadContacts() {
             div.onmouseover = () => div.style.background = '#1b8c87';
             div.onmouseout = () => div.style.background = '#23a6a0';
 
-            // Avatar
             const avatar = document.createElement('div');
             avatar.textContent = contact.email.charAt(0).toUpperCase();
             avatar.style.width = '30px';
@@ -165,12 +197,10 @@ async function loadContacts() {
             avatar.style.marginRight = '10px';
             avatar.style.flexShrink = '0';
 
-            // Nome
             const span = document.createElement('span');
             span.textContent = contact.email;
             span.style.flexGrow = '1';
 
-            // Remover
             const removeBtn = document.createElement('button');
             removeBtn.textContent = 'X';
             removeBtn.style.background = '#ff4c4c';
