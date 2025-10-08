@@ -1,15 +1,15 @@
 // chat.js
-import { auth, db } from './firebaseConfig.js';
+import { auth, db, storage } from './firebaseConfig.js';
 import { 
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
-    sendEmailVerification, updateProfile, updateEmail, updatePassword,
-    signOut
+    sendEmailVerification, updateProfile, updateEmail, updatePassword
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { 
     collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
-// Elementos do DOM
+// DOM Elements
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -17,26 +17,23 @@ const sendBtn = document.getElementById('sendBtn');
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn');
 const addContactBtn = document.getElementById('addContactBtn');
-const updateProfileBtn = document.getElementById('updateProfileBtn');
-const updateEmailBtn = document.getElementById('updateEmailBtn');
-const updatePasswordBtn = document.getElementById('updatePasswordBtn');
-const sendVerificationBtn = document.getElementById('sendVerificationBtn');
-const resetPasswordBtn = document.getElementById('resetPasswordBtn');
 
 let currentUser = null;
 let currentChatContact = null;
 
 // ------------------ Funções ------------------
 
-// Mostrar mensagem no chat
-function addMessage(text, from = 'user') {
+// Adicionar mensagem ao chat
+function addMessage(content, from = 'user', isImage = false) {
     const msg = document.createElement('div');
-    msg.textContent = text;
     msg.style.margin = '5px 0';
     msg.style.padding = '8px 12px';
     msg.style.borderRadius = '15px';
     msg.style.maxWidth = '60%';
     msg.style.wordWrap = 'break-word';
+    msg.style.display = 'flex';
+    msg.style.flexDirection = 'column';
+    msg.style.transition = '0.2s all';
 
     if(from === 'user') {
         msg.style.background = '#05635f';
@@ -48,15 +45,25 @@ function addMessage(text, from = 'user') {
         msg.style.alignSelf = 'flex-start';
     }
 
+    if(isImage) {
+        const img = document.createElement('img');
+        img.src = content;
+        img.style.maxWidth = '200px';
+        img.style.borderRadius = '10px';
+        img.style.marginTop = '5px';
+        msg.appendChild(img);
+    } else {
+        msg.textContent = content;
+    }
+
     messagesDiv.appendChild(msg);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
 }
 
-// Enviar mensagem
+// Enviar mensagem de texto
 async function sendMessage(text) {
     if(!currentUser) return alert("Faça login primeiro!");
     if(!currentChatContact) return alert("Selecione um contato!");
-
     try {
         await addDoc(collection(db, "messages"), {
             text,
@@ -64,19 +71,36 @@ async function sendMessage(text) {
             uidTo: currentChatContact.uid,
             emailFrom: currentUser.email,
             emailTo: currentChatContact.email,
+            type: 'text',
             timestamp: serverTimestamp()
         });
-    } catch (err) {
-        console.error("Erro ao enviar mensagem:", err);
-    }
+    } catch(err) { console.error(err); }
+}
+
+// Enviar imagem
+async function sendImage(file) {
+    if(!currentUser || !currentChatContact) return;
+    const storageRef = ref(storage, `images/${currentUser.uid}_${Date.now()}_${file.name}`);
+    try {
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        await addDoc(collection(db, "messages"), {
+            imageUrl: url,
+            uidFrom: currentUser.uid,
+            uidTo: currentChatContact.uid,
+            emailFrom: currentUser.email,
+            emailTo: currentChatContact.email,
+            type: 'image',
+            timestamp: serverTimestamp()
+        });
+    } catch(err) { console.error(err); }
 }
 
 // Ouvir mensagens
 function listenMessages() {
     if(!currentUser || !currentChatContact) return;
-
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    onSnapshot(q, (snapshot) => {
+    onSnapshot(q, snapshot => {
         messagesDiv.innerHTML = '';
         snapshot.forEach(docSnap => {
             const msgData = docSnap.data();
@@ -84,7 +108,8 @@ function listenMessages() {
                 (msgData.uidFrom === currentUser.uid && msgData.uidTo === currentChatContact.uid) ||
                 (msgData.uidFrom === currentChatContact.uid && msgData.uidTo === currentUser.uid)
             ) {
-                addMessage(msgData.text, msgData.uidFrom === currentUser.uid ? 'user' : 'bot');
+                if(msgData.type === 'image') addMessage(msgData.imageUrl, msgData.uidFrom === currentUser.uid ? 'user' : 'bot', true);
+                else addMessage(msgData.text, msgData.uidFrom === currentUser.uid ? 'user' : 'bot');
             }
         });
     });
@@ -92,102 +117,24 @@ function listenMessages() {
 
 // ------------------ Eventos ------------------
 
-// Envio via botão ou Enter
+// Enviar mensagem via botão ou Enter
 sendBtn.addEventListener('click', async () => {
     const text = msgInput.value.trim();
-    if(text !== '') {
-        await sendMessage(text);
-        msgInput.value = '';
-    }
+    if(text !== '') { await sendMessage(text); msgInput.value = ''; }
 });
-msgInput.addEventListener('keypress', (e) => {
-    if(e.key === 'Enter') sendBtn.click();
-});
+msgInput.addEventListener('keypress', e => { if(e.key === 'Enter') sendBtn.click(); });
 
-// Login
-loginBtn.addEventListener('click', async () => {
-    const email = prompt("Digite seu email:");
-    const password = prompt("Digite sua senha:");
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        currentUser = userCredential.user;
-        alert(`Bem-vindo, ${currentUser.email}`);
-        loadContacts();
-    } catch(err) {
-        alert("Erro no login: " + err.message);
-    }
-});
-
-// Registrar
-registerBtn.addEventListener('click', async () => {
-    const email = prompt("Digite seu email:");
-    const password = prompt("Digite sua senha:");
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        currentUser = userCredential.user;
-        alert(`Conta criada com sucesso: ${currentUser.email}`);
-        loadContacts();
-    } catch(err) {
-        alert("Erro ao registrar: " + err.message);
-    }
-});
-
-// Atualizações de perfil/email/senha
-updateProfileBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
-    const displayName = prompt("Digite novo nome:");
-    try {
-        await updateProfile(currentUser, { displayName });
-        alert("Perfil atualizado!");
-    } catch(err) { alert(err.message); }
-});
-
-updateEmailBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
-    const newEmail = prompt("Digite novo email:");
-    try {
-        await updateEmail(currentUser, newEmail);
-        alert("Email atualizado!");
-    } catch(err) { alert(err.message); }
-});
-
-updatePasswordBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
-    const newPass = prompt("Digite nova senha:");
-    try {
-        await updatePassword(currentUser, newPass);
-        alert("Senha atualizada!");
-    } catch(err) { alert(err.message); }
-});
-
-sendVerificationBtn.addEventListener('click', async () => {
-    if(!currentUser) return alert("Faça login primeiro!");
-    try {
-        await sendEmailVerification(currentUser);
-        alert("Email de verificação enviado!");
-    } catch(err) { alert(err.message); }
-});
-
-resetPasswordBtn.addEventListener('click', async () => {
-    const email = prompt("Digite seu email para resetar a senha:");
-    try { await auth.sendPasswordResetEmail(email); alert("Email enviado!"); }
-    catch(err) { alert(err.message); }
-});
-
-// ------------------ Contatos estilizados ------------------
+// ------------------ Contatos ------------------
 
 async function loadContacts() {
     const sidebar = document.querySelector('.sidebar');
-    const oldContacts = document.querySelectorAll('.contact-item');
-    oldContacts.forEach(c => c.remove());
-    if (!currentUser) return;
+    document.querySelectorAll('.contact-item').forEach(c => c.remove());
+    if(!currentUser) return;
 
     try {
         const contactsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "contacts"));
         contactsSnapshot.forEach(docSnap => {
             const contact = docSnap.data();
-
-            // Container do contato
             const div = document.createElement('div');
             div.className = 'contact-item';
             div.style.display = 'flex';
@@ -199,11 +146,11 @@ async function loadContacts() {
             div.style.background = '#23a6a0';
             div.style.color = '#fff';
             div.style.cursor = 'pointer';
-            div.style.transition = 'background 0.2s';
+            div.style.transition = '0.2s all';
             div.onmouseover = () => div.style.background = '#1b8c87';
             div.onmouseout = () => div.style.background = '#23a6a0';
 
-            // Avatar (iniciais)
+            // Avatar
             const avatar = document.createElement('div');
             avatar.textContent = contact.email.charAt(0).toUpperCase();
             avatar.style.width = '30px';
@@ -223,7 +170,7 @@ async function loadContacts() {
             span.textContent = contact.email;
             span.style.flexGrow = '1';
 
-            // Botão remover
+            // Remover
             const removeBtn = document.createElement('button');
             removeBtn.textContent = 'X';
             removeBtn.style.background = '#ff4c4c';
@@ -232,31 +179,17 @@ async function loadContacts() {
             removeBtn.style.borderRadius = '4px';
             removeBtn.style.cursor = 'pointer';
             removeBtn.style.padding = '2px 6px';
-            removeBtn.addEventListener('click', async (e) => {
+            removeBtn.addEventListener('click', async e => {
                 e.stopPropagation();
-                if(!confirm(`Remover contato ${contact.email} e apagar chat?`)) return;
-                try {
-                    await deleteDoc(doc(db, "users", currentUser.uid, "contacts", docSnap.id));
-                    const messagesSnapshot = await getDocs(collection(db, "messages"));
-                    messagesSnapshot.forEach(async m => {
-                        const mData = m.data();
-                        if(
-                            (mData.uidFrom === currentUser.uid && mData.uidTo === docSnap.id) ||
-                            (mData.uidFrom === docSnap.id && mData.uidTo === currentUser.uid)
-                        ) await deleteDoc(doc(db, "messages", m.id));
-                    });
-                    if(currentChatContact && currentChatContact.uid === docSnap.id) {
-                        messagesDiv.innerHTML = '';
-                        currentChatContact = null;
-                    }
-                    loadContacts();
-                } catch(err) { console.error(err); alert("Erro ao remover contato."); }
+                if(!confirm(`Remover ${contact.email}?`)) return;
+                await deleteDoc(doc(db, "users", currentUser.uid, "contacts", docSnap.id));
+                loadContacts();
+                if(currentChatContact && currentChatContact.uid === docSnap.id) {
+                    messagesDiv.innerHTML = ''; currentChatContact = null;
+                }
             });
 
-            div.appendChild(avatar);
-            div.appendChild(span);
-            div.appendChild(removeBtn);
-
+            div.appendChild(avatar); div.appendChild(span); div.appendChild(removeBtn);
             div.addEventListener('click', () => {
                 currentChatContact = { uid: docSnap.id, email: contact.email };
                 messagesDiv.innerHTML = '';
@@ -268,15 +201,14 @@ async function loadContacts() {
     } catch(err) { console.error(err); }
 }
 
-// Adicionar contato com input estilizado
+// Adicionar contato
 addContactBtn.addEventListener('click', () => {
-    if (!currentUser) return alert("Faça login primeiro!");
-    if (document.getElementById('newContactInput')) return;
-
+    if(!currentUser) return alert("Faça login primeiro!");
+    if(document.getElementById('newContactInput')) return;
     const input = document.createElement('input');
-    input.type = 'email';
     input.id = 'newContactInput';
-    input.placeholder = 'Digite e-mail do contato';
+    input.placeholder = 'Digite email do contato';
+    input.type = 'email';
     input.style.padding = '8px';
     input.style.marginBottom = '5px';
     input.style.borderRadius = '5px';
@@ -287,21 +219,44 @@ addContactBtn.addEventListener('click', () => {
     sidebar.insertBefore(input, addContactBtn.nextSibling);
     input.focus();
 
-    input.addEventListener('keypress', async (e) => {
+    input.addEventListener('keypress', async e => {
         if(e.key === 'Enter') {
-            const contactEmail = input.value.trim();
-            if(!contactEmail) return alert("Digite um e-mail válido.");
+            const email = input.value.trim();
+            if(!email) return alert("Digite um email válido.");
             try {
                 const docRef = await addDoc(collection(db, "users", currentUser.uid, "contacts"), {
-                    email: contactEmail,
-                    addedAt: serverTimestamp()
+                    email, addedAt: serverTimestamp()
                 });
-                input.remove();
-                loadContacts();
-                currentChatContact = { uid: docRef.id, email: contactEmail };
-                messagesDiv.innerHTML = '';
-                listenMessages();
+                input.remove(); loadContacts();
+                currentChatContact = { uid: docRef.id, email };
+                messagesDiv.innerHTML = ''; listenMessages();
             } catch(err) { console.error(err); alert("Erro ao adicionar contato."); }
         }
     });
+});
+
+// ------------------ Upload de imagens ------------------
+const chatArea = document.querySelector('.input-area');
+const uploadBtn = document.createElement('button');
+uploadBtn.textContent = '📎';
+uploadBtn.style.fontSize = '18px';
+uploadBtn.style.border = 'none';
+uploadBtn.style.background = '#05635f';
+uploadBtn.style.color = 'white';
+uploadBtn.style.borderRadius = '25px';
+uploadBtn.style.cursor = 'pointer';
+uploadBtn.style.padding = '0 12px';
+chatArea.insertBefore(uploadBtn, msgInput);
+
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/*';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if(file) await sendImage(file);
+    fileInput.value = '';
 });

@@ -8,6 +8,8 @@
     <style>
         * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
         body { margin: 0; background: #e0dad4; display: flex; height: 100vh; }
+
+        /* Sidebar */
         .sidebar {
             width: 300px;
             background: #05635f;
@@ -28,6 +30,25 @@
             border-radius: 5px;
         }
         .sidebar button:hover { opacity: 0.9; }
+
+        /* Contatos dinamicos */
+        .contact-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            background: #23a6a0;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.2s all;
+        }
+        .contact-item:hover { background: #1b8c87; }
+        .contact-item span { flex-grow: 1; }
+        .contact-item button { background: #ff4c4c; border: none; color: #fff; border-radius: 4px; cursor: pointer; padding: 2px 6px; }
+
+        /* Chat area */
         .chat-area {
             flex: 1;
             display: flex;
@@ -40,14 +61,18 @@
             overflow-y: auto;
             padding-right: 10px;
             margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
         }
+
+        /* Input area */
         .input-area {
             display: flex;
             gap: 10px;
         }
         #msgInput {
             flex: 1;
-            padding: 10px;
+            padding: 10px 15px;
             border-radius: 25px;
             border: 1px solid #ccc;
             font-size: 16px;
@@ -62,6 +87,18 @@
             cursor: pointer;
         }
         #sendBtn:hover { opacity: 0.9; }
+
+        /* Botão de upload de imagem */
+        #uploadBtn {
+            background: #05635f;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 12px;
+        }
+        #uploadBtn:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -81,8 +118,11 @@
     <div class="chat-area">
         <div id="messages"></div>
         <div class="input-area">
+            <!-- Botão de upload de imagem -->
+            <button id="uploadBtn">📎</button>
             <input type="text" id="msgInput" placeholder="Digite uma mensagem...">
             <button id="sendBtn">Enviar</button>
+            <input type="file" id="fileInput" accept="image/*" style="display:none;">
         </div>
     </div>
 
