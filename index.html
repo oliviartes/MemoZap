@@ -3,30 +3,207 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MemoZap</title>
-<link rel="stylesheet" href="style.css">
+<title>MemoChat - Grupo</title>
+<style>
+  body { font-family: Arial; margin:0; display:flex; height:100vh; }
+  #rooms { width: 200px; border-right:1px solid #ccc; padding:10px; overflow-y:auto; }
+  #chat { flex:1; display:flex; flex-direction:column; }
+  #messages { flex:1; overflow-y:auto; padding:10px; background:#f4f4f4; }
+  #inputContainer { display:flex; padding:10px; background:#fff; }
+  #msgInput { flex:1; padding:10px; }
+  #usersOnline { border-top:1px solid #ccc; padding:5px; }
+  .room, .user { padding:5px; cursor:pointer; }
+  .room.active { background:#ddd; }
+  .message { padding:5px; margin-bottom:5px; border-radius:5px; }
+  .mine { background:#a0e7e5; align-self:flex-end; }
+</style>
 </head>
 <body>
-<div class="container">
-    <div class="sidebar">
-        <h2>MemoZap 💬</h2>
-        <button onclick="handleLogin()">Login</button>
-        <button onclick="handleRegister()">Registrar</button>
-        <button onclick="addContact()">+ Adicionar Contato</button>
-        <button onclick="updateUserProfile()">Atualizar Perfil</button>
-        <button onclick="updateUserEmail()">Atualizar E-mail</button>
-        <button onclick="updateUserPassword()">Atualizar Senha</button>
-        <button onclick="sendVerificationEmail()">Enviar Verificação</button>
-        <button onclick="sendResetPasswordEmail()">Redefinir Senha</button>
-    </div>
-    <div class="chat-area">
-        <div id="messages" class="messages"></div>
-        <div class="input-area">
-            <input type="text" id="msgInput" placeholder="Digite uma mensagem...">
-            <button onclick="sendMessage()">Enviar</button>
-        </div>
-    </div>
+
+<div id="rooms"></div>
+
+<div id="chat">
+  <div id="messages"></div>
+  <div id="inputContainer">
+    <input type="text" id="msgInput" placeholder="Digite a mensagem e pressione Enter">
+    <input type="file" id="imgInput" accept="image/*">
+    <button id="emojiBtn">😀</button>
+  </div>
+  <div id="usersOnline"></div>
 </div>
-<script type="module" src="chat.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { 
+  getFirestore, collection, addDoc, doc, setDoc, serverTimestamp, query, orderBy, onSnapshot 
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+// ---------------- CONFIG ----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyAeyyLnVse-vvsRRuNsUsBkaHhCoxC8dmQ",
+  authDomain: "memofuturo.firebaseapp.com",
+  projectId: "memofuturo",
+  storageBucket: "memofuturo.appspot.com",
+  messagingSenderId: "932046699518",
+  appId: "1:932046699518:web:cb6d1e78618689dcbd9eaf",
+  measurementId: "G-3CEEXGN9X6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+// ---------------- DOM ----------------
+const roomsDiv = document.getElementById("rooms");
+const messagesDiv = document.getElementById("messages");
+const msgInput = document.getElementById("msgInput");
+const imgInput = document.getElementById("imgInput");
+const emojiBtn = document.getElementById("emojiBtn");
+const usersOnlineDiv = document.getElementById("usersOnline");
+
+let currentRoom = null;
+
+// ---------------- FUNÇÕES ----------------
+async function registerUser(email, password){
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+async function loginUser(email, password){
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+// Enviar mensagem (texto ou imagem)
+async function sendMessage(text="", imgUrl=null){
+  const user = auth.currentUser;
+  if(!user || !currentRoom) throw new Error("Selecione uma sala e faça login");
+
+  await addDoc(collection(db, `rooms/${currentRoom.id}/messages`), {
+    text,
+    img: imgUrl || null,
+    senderUid: user.uid,
+    senderEmail: user.email,
+    timestamp: serverTimestamp()
+  });
+}
+
+// Upload de imagem
+async function uploadImage(file){
+  const user = auth.currentUser;
+  const fileRef = storageRef(storage, `images/${user.uid}_${Date.now()}_${file.name}`);
+  await uploadBytes(fileRef, file);
+  return getDownloadURL(fileRef);
+}
+
+// Carregar salas
+function loadRooms(){
+  onSnapshot(collection(db, "rooms"), snapshot=>{
+    roomsDiv.innerHTML="";
+    snapshot.forEach(docu=>{
+      const data = docu.data();
+      const div = document.createElement("div");
+      div.classList.add("room");
+      div.textContent = data.name;
+      div.onclick = ()=>{
+        document.querySelectorAll(".room").forEach(r=>r.classList.remove("active"));
+        div.classList.add("active");
+        currentRoom = { id: docu.id, name: data.name };
+        listenRoomMessages();
+        listenUsersOnline();
+      };
+      roomsDiv.appendChild(div);
+    });
+  });
+}
+
+// Criar sala
+async function createRoom(name){
+  const roomRef = doc(collection(db, "rooms"));
+  await setDoc(roomRef, { name });
+}
+
+// Escutar mensagens da sala
+function listenRoomMessages(){
+  if(!currentRoom) return;
+  const q = query(collection(db, `rooms/${currentRoom.id}/messages`), orderBy("timestamp"));
+  onSnapshot(q, snapshot=>{
+    messagesDiv.innerHTML="";
+    snapshot.forEach(doc=>{
+      const m = doc.data();
+      const div = document.createElement("div");
+      div.classList.add("message");
+      if(auth.currentUser.uid===m.senderUid) div.classList.add("mine");
+
+      if(m.img){
+        const img = document.createElement("img");
+        img.src = m.img;
+        img.style.maxWidth="200px";
+        div.appendChild(img);
+      }
+      if(m.text) div.appendChild(document.createTextNode(m.text));
+
+      messagesDiv.appendChild(div);
+    });
+    messagesDiv.scrollTop=messagesDiv.scrollHeight;
+  });
+}
+
+// Escutar usuários online
+function listenUsersOnline(){
+  if(!currentRoom) return;
+  onSnapshot(collection(db, `rooms/${currentRoom.id}/onlineUsers`), snapshot=>{
+    usersOnlineDiv.innerHTML="Online: ";
+    snapshot.forEach(doc=>{
+      const u = doc.data();
+      const span = document.createElement("span");
+      span.classList.add("user");
+      span.textContent = u.email + " ";
+      usersOnlineDiv.appendChild(span);
+    });
+  });
+}
+
+// ---------------- EVENTOS ----------------
+msgInput.addEventListener("keypress", async e=>{
+  if(e.key==="Enter"){
+    try{ await sendMessage(msgInput.value.trim()); msgInput.value=""; }
+    catch(err){ alert(err.message); }
+  }
+});
+
+imgInput.addEventListener("change", async e=>{
+  const file=e.target.files[0];
+  if(file){
+    const url = await uploadImage(file);
+    await sendMessage("", url);
+    imgInput.value="";
+  }
+});
+
+emojiBtn.addEventListener("click", ()=>{ msgInput.value += "😀"; });
+
+// ---------------- AUTENTICAÇÃO ----------------
+onAuthStateChanged(auth, async user=>{
+  if(user){
+    const userRef = doc(db, "users", user.uid);
+    await setDoc(userRef, { uid: user.uid, email: user.email }, { merge:true });
+    loadRooms();
+  } else {
+    roomsDiv.innerHTML="";
+    messagesDiv.innerHTML="";
+    usersOnlineDiv.innerHTML="";
+  }
+});
+
+// ---------------- LOGIN/REGISTRO RÁPIDO ----------------
+(async ()=>{
+  const email = prompt("Digite seu e-mail:");
+  const password = prompt("Digite sua senha:");
+  try{ await loginUser(email, password); } 
+  catch{ await registerUser(email, password); }
+})();
+</script>
+
 </body>
 </html>
