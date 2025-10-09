@@ -1,3 +1,4 @@
+/* ===== RESET ===== */
 body, html {
   margin: 0;
   padding: 0;
@@ -8,6 +9,7 @@ body, html {
 
 .app { display: flex; height: 100vh; }
 
+/* ===== SIDEBAR ===== */
 .sidebar {
   width: 300px;
   background: #05635f;
@@ -33,6 +35,7 @@ body, html {
 .contacts-section { margin-top: 20px; }
 .contacts-list { max-height: 200px; overflow-y: auto; }
 
+/* ===== MAIN ===== */
 .main {
   flex: 1;
   display: flex;
@@ -47,6 +50,62 @@ body, html {
   margin-bottom: 10px;
 }
 
+/* ===== MENSAGENS ===== */
+.message {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  word-wrap: break-word;
+}
+
+.message.sent {
+  align-items: flex-end;
+}
+
+.message.received {
+  align-items: flex-start;
+}
+
+/* Balão de texto */
+.message p {
+  display: inline-block;
+  padding: 10px 15px;
+  border-radius: 20px;
+  max-width: 70%;
+}
+
+.message.sent p {
+  background: #23a6a0;
+  color: #fff;
+  border-bottom-right-radius: 0;
+}
+
+.message.received p {
+  background: #fff;
+  color: #000;
+  border-bottom-left-radius: 0;
+}
+
+/* Imagens enviadas no chat */
+.message img.chat-image {
+  max-width: 150px;
+  border-radius: 15px;
+  display: block;
+  margin: 5px 0;
+}
+
+/* ===== PREVIEW DE IMAGEM ===== */
+.message-preview {
+  margin-bottom: 10px;
+}
+
+.message-preview img {
+  max-width: 100px;
+  border-radius: 8px;
+  margin-bottom: 5px;
+}
+
+/* ===== INPUT AREA ===== */
 .input-area {
   display: flex;
   gap: 10px;
@@ -66,4 +125,18 @@ body, html {
   background: #05635f;
   color: #fff;
   cursor: pointer;
+}
+
+/* ===== SCROLLBAR MENSAGENS ===== */
+.messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
+.messages::-webkit-scrollbar-track {
+  background: transparent;
 }
