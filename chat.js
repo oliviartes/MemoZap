@@ -1,9 +1,5 @@
-// ------------------ chat.js ------------------
+ import { uploadFile } from "./upload.js";
 
-// ✅ Import do módulo de upload (responsável por enviar arquivos)
-import { uploadFile } from "./upload.js";
-
-// ✅ Imports do Firebase e bibliotecas
 import { auth, db } from './firebaseConfig.js';
 import { 
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -37,29 +33,41 @@ const addContactBtn = document.getElementById('addContactBtn');
 const addContactInput = document.getElementById('addContactInput');
 const contactsListDiv = document.getElementById('contactsList');
 
+let currentUser = null;
+
+
+
+
+
+  // ------------------ Upload via upload.js ------------------
 const uploadBtn = document.getElementById("uploadBtn");
 const fileInput = document.getElementById("fileInput");
 
-let currentUser = null;
-
-// ------------------ Upload de arquivos ------------------
 uploadBtn.addEventListener("click", () => {
-    fileInput.click();
+  fileInput.click();
 });
 
 fileInput.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    const activeContactEmail = document.getElementById("activeName")?.textContent || null;
-    if (!currentUser) return alert("Faça login primeiro!");
-    if (!activeContactEmail) return alert("Selecione um contato para enviar o arquivo!");
+  if (!currentUser) return alert("Faça login primeiro!");
 
-    await uploadFile(activeContactEmail, file);
-    fileInput.value = "";
+  // Envia o arquivo para todos (chat geral)
+  await uploadFile(null, file);
+
+  fileInput.value = "";
 });
 
-// ------------------ Funções de mensagens ------------------
+
+
+
+
+
+
+
+// ------------------ Funções ------------------
+
 function addMessage(text, from = 'user', id = null, likes = 0, seen = false) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message-item';
@@ -83,6 +91,7 @@ function addMessage(text, from = 'user', id = null, likes = 0, seen = false) {
     actionsDiv.style.display = 'flex';
     actionsDiv.style.gap = '5px';
 
+    // Botão curtir
     const likeBtn = document.createElement('button');
     likeBtn.textContent = `❤️ ${likes}`;
     likeBtn.style.cursor = 'pointer';
@@ -93,6 +102,7 @@ function addMessage(text, from = 'user', id = null, likes = 0, seen = false) {
     });
     actionsDiv.appendChild(likeBtn);
 
+    // Botão apagar e status de visualização
     if(from === 'user') {
         const delBtn = document.createElement('button');
         delBtn.textContent = '🗑️';
@@ -148,6 +158,7 @@ function listenMessages() {
                 msgData.seen || false
             );
 
+            // Marcar como visualizada se for do outro usuário
             if(!isUser && !msgData.seen) {
                 const msgRef = doc(db, "messages", docItem.id);
                 await updateDoc(msgRef, { seen: true });
@@ -157,6 +168,7 @@ function listenMessages() {
 }
 
 // ------------------ Contatos ------------------
+
 function renderContacts(snapshot) {
     contactsListDiv.innerHTML = '';
     snapshot.forEach(doc => {
@@ -171,14 +183,19 @@ function renderContacts(snapshot) {
 function listenContacts() {
     if(!currentUser) return;
     const contactsRef = collection(db, "users", currentUser.uid, "contacts");
-    onSnapshot(contactsRef, snapshot => renderContacts(snapshot));
+    onSnapshot(contactsRef, snapshot => {
+        renderContacts(snapshot);
+    });
 }
 
 async function addContact(email) {
     if(!currentUser) return alert("Faça login primeiro!");
     try {
         const contactsRef = collection(db, "users", currentUser.uid, "contacts");
-        await addDoc(contactsRef, { email, addedAt: serverTimestamp() });
+        await addDoc(contactsRef, { 
+            email, 
+            addedAt: serverTimestamp() 
+        });
         addContactInput.value = '';
         alert("Contato adicionado com sucesso!");
         listenContacts();
@@ -189,12 +206,31 @@ async function addContact(email) {
 }
 
 // ------------------ Eventos ------------------
-msgInput.addEventListener('input', () => sendBtn.disabled = msgInput.value.trim() === '');
+
+// Habilitar botão de enviar ao digitar
+msgInput.addEventListener('input', () => {
+    sendBtn.disabled = msgInput.value.trim() === '';
+});
+
+// Enviar mensagem
 sendBtn.addEventListener('click', async () => {
     const text = msgInput.value.trim();
-    if(text) await sendMessage(text);
+    if(text !== '') {
+        await sendMessage(text);
+
+ msgInput.value = '';
+        sendBtn.disabled = true;
+
+
+    }
 });
-msgInput.addEventListener('keypress', (e) => { if(e.key==='Enter') sendBtn.click(); });
+msgInput.addEventListener('keypress', (e) => {
+    if(e.key === 'Enter') sendBtn.click();
+});
+
+
+
+// Adicionar contato
 addContactBtn.addEventListener('click', () => {
     const email = addContactInput.value.trim();
     if(!email) return alert("Digite um email válido!");
@@ -202,6 +238,8 @@ addContactBtn.addEventListener('click', () => {
 });
 
 // ------------------ Login / Registro ------------------
+
+// Login
 loginBtn.addEventListener('click', async () => {
     const email = loginEmailInput.value.trim();
     const password = loginPasswordInput.value.trim();
@@ -218,6 +256,7 @@ loginBtn.addEventListener('click', async () => {
     }
 });
 
+// Registrar
 registerBtn.addEventListener('click', async () => {
     const email = registerEmailInput.value.trim();
     const password = registerPasswordInput.value.trim();
@@ -235,50 +274,65 @@ registerBtn.addEventListener('click', async () => {
 });
 
 // ------------------ Atualizações de Perfil ------------------
+
+// Atualizar perfil
 updateProfileBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     const displayName = prompt("Digite novo nome:");
     if(!displayName) return;
-    try { await updateProfile(currentUser, { displayName }); alert("Perfil atualizado!"); } 
-    catch(err){ alert(err.message); }
+    try {
+        await updateProfile(currentUser, { displayName });
+        alert("Perfil atualizado!");
+    } catch(err) {
+        alert(err.message);
+    }
 });
 
+// Atualizar email
 updateEmailBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     const newEmail = prompt("Digite novo email:");
     if(!newEmail) return;
-    try { await updateEmail(currentUser, newEmail); alert("Email atualizado!"); } 
-    catch(err){ alert(err.message); }
+    try {
+        await updateEmail(currentUser, newEmail);
+        alert("Email atualizado!");
+    } catch(err) {
+        alert(err.message);
+    }
 });
 
+// Atualizar senha
 updatePasswordBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     const newPass = prompt("Digite nova senha:");
     if(!newPass) return;
-    try { await updatePassword(currentUser, newPass); alert("Senha atualizada!"); } 
-    catch(err){ alert(err.message); }
+    try {
+        await updatePassword(currentUser, newPass);
+        alert("Senha atualizada!");
+    } catch(err) {
+        alert(err.message);
+    }
 });
 
+// Enviar verificação de email
 sendVerificationBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
-    try { await sendEmailVerification(currentUser); alert("Email de verificação enviado!"); } 
-    catch(err){ alert(err.message); }
+    try {
+        await sendEmailVerification(currentUser);
+        alert("Email de verificação enviado!");
+    } catch(err) {
+        alert(err.message);
+    }
 });
 
+// Resetar senha
 resetPasswordBtn.addEventListener('click', async () => {
     const email = prompt("Digite seu email para resetar a senha:");
     if(!email) return;
-    try { await sendPasswordResetEmail(auth, email); alert("Email de redefinição enviado!"); } 
-    catch(err){ alert(err.message); }
-});
-
-// ------------------ Inicialização ------------------
-auth.onAuthStateChanged((user) => {
-    if(user){
-        currentUser = user;
-        sendBtn.disabled = false;
-        listenMessages();
-        listenContacts();
+    try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Email de redefinição enviado!");
+    } catch(err) {
+        alert(err.message);
     }
 });
-//texte1
