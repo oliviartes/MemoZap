@@ -17,13 +17,6 @@ import {
 
 
 
-
-
-
-
-
-
-
 // ------------------ DOM ------------------
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
@@ -52,30 +45,95 @@ let currentUser = null;
 
 
 
-// ------------------ Upload de arquivos ------------------
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const previewDiv = document.getElementById('messagePreview');
 
-uploadBtn.addEventListener('click', () => {
-    fileInput.click();
+// ------------------ Renderização de mensagens ------------------
+function renderMessage(msg) {
+    const div = document.createElement('div');
+    div.className = msg.senderId === auth.currentUser.uid ? 'message sent' : 'message received';
+
+    if(msg.fileUrl) {
+        const img = document.createElement('img');
+        img.src = msg.fileUrl;
+        img.alt = msg.fileName;
+        img.className = 'chat-image';
+        img.style.maxWidth = '200px';
+        div.appendChild(img);
+    }
+
+    if(msg.text) {
+        const p = document.createElement('p');
+        p.textContent = msg.text;
+        div.appendChild(p);
+    }
+
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// ------------------ Listener do Firestore (tempo real) ------------------
+const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
+onSnapshot(messagesQuery, (snapshot) => {
+    messagesDiv.innerHTML = ''; // limpa mensagens
+    snapshot.forEach(doc => renderMessage(doc.data()));
 });
 
-fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
+// ------------------ Envio de mensagens de texto ------------------
+sendBtn.addEventListener('click', async () => {
+    const text = msgInput.value.trim();
+    if (!text) return;
+
+    const user = auth.currentUser;
+    if (!user) {
+        alert('Faça login para enviar mensagens.');
+        return;
+    }
+
+    await addDoc(collection(db, 'messages'), {
+        text,
+        senderId: user.uid,
+        senderName: user.displayName || 'Usuário',
+        createdAt: serverTimestamp()
+    });
+
+    msgInput.value = '';
+});
+
+// ------------------ Upload de arquivos ------------------
+uploadBtn.addEventListener('click', () => fileInput.click());
+
+// Preview da imagem antes do upload
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
     if (!file) return;
 
-    // Verifica se o usuário está logado
+    previewDiv.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = '100px';
+    img.alt = file.name;
+    previewDiv.appendChild(img);
+});
+
+// Upload real da imagem
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
     const user = auth.currentUser;
     if (!user) {
         alert("Faça login primeiro para enviar arquivos.");
         fileInput.value = '';
+        previewDiv.innerHTML = '';
         return;
     }
 
-    // Caminho de upload: messages/{uid}/{timestamp}_{filename}
     const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
-    const fileRef = ref(storage, path); // ✅ Corrigido: ref() em vez de storageRef()
+    const fileRef = ref(storage, path);
     const uploadTask = uploadBytesResumable(fileRef, file);
 
-    // UI temporária de progresso
     const progressDiv = document.createElement('div');
     progressDiv.textContent = `Enviando ${file.name} (0%)`;
     messagesDiv.appendChild(progressDiv);
@@ -88,14 +146,14 @@ fileInput.addEventListener('change', async (e) => {
         console.error('Erro upload:', error);
         alert('Erro ao enviar arquivo: ' + error.message);
         progressDiv.remove();
+        previewDiv.innerHTML = '';
+        fileInput.value = '';
     }, async () => {
         try {
             const url = await getDownloadURL(uploadTask.snapshot.ref);
-            progressDiv.textContent = `Upload concluído: ${file.name}`;
 
-            // Salva mensagem no Firestore para que todos vejam
-            const messageData = {
-                text: '', // sem texto, apenas arquivo
+            await addDoc(collection(db, 'messages'), {
+                text: '',
                 fileName: file.name,
                 fileType: file.type || 'application/octet-stream',
                 fileSize: file.size,
@@ -103,23 +161,20 @@ fileInput.addEventListener('change', async (e) => {
                 senderId: user.uid,
                 senderName: user.displayName || 'Usuário',
                 createdAt: serverTimestamp()
-            };
-            await addDoc(collection(db, 'messages'), messageData);
+            });
 
-            // Limpa input e remove progresso depois
             setTimeout(() => progressDiv.remove(), 1500);
+            previewDiv.innerHTML = '';
             fileInput.value = '';
         } catch (err) {
-            console.error('Erro ao finalizar upload:', err);
+            console.error('Erro finalizando upload:', err);
             alert('Erro finalizando upload: ' + err.message);
             progressDiv.remove();
+            previewDiv.innerHTML = '';
             fileInput.value = '';
         }
     });
 });
-
-
-
 
 
 
