@@ -1,4 +1,6 @@
- import { uploadFile } from "./upload.js";
+// ✅ Import do módulo de upload (responsável por enviar arquivos)
+import { uploadFile } from "./upload.js";
+
 
 import { auth, db } from './firebaseConfig.js';
 import { 
@@ -34,37 +36,6 @@ const addContactInput = document.getElementById('addContactInput');
 const contactsListDiv = document.getElementById('contactsList');
 
 let currentUser = null;
-
-
-
-
-
-  // ------------------ Upload via upload.js ------------------
-const uploadBtn = document.getElementById("uploadBtn");
-const fileInput = document.getElementById("fileInput");
-
-uploadBtn.addEventListener("click", () => {
-  fileInput.click();
-});
-
-fileInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  if (!currentUser) return alert("Faça login primeiro!");
-
-  // Envia o arquivo para todos (chat geral)
-  await uploadFile(null, file);
-
-  fileInput.value = "";
-});
-
-
-
-
-
-
-
 
 // ------------------ Funções ------------------
 
