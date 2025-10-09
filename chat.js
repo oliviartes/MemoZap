@@ -167,7 +167,14 @@ msgInput.addEventListener('input', () => {
 });
 
 // Enviar mensagem
-sendBtn.addEventListener('click', sendMessage);
+sendBtn.addEventListener('click', async () => {
+    const text = msgInput.value.trim();
+    if(text !== '') {
+        await sendMessage(text);
+        msgInput.value = '';
+        sendBtn.disabled = true;
+    }
+});
 msgInput.addEventListener('keypress', (e) => {
     if(e.key === 'Enter') sendBtn.click();
 });
@@ -178,6 +185,11 @@ addContactBtn.addEventListener('click', () => {
     if(!email) return alert("Digite um email válido!");
     addContact(email);
 });
+
+
+
+
+
 
 // ------------------ Login / Registro ------------------
 
