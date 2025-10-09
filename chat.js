@@ -44,80 +44,12 @@ let currentUser = null;
 
 
 
-const uploadBtn = document.getElementById('uploadBtn');
-const fileInput = document.getElementById('fileInput');
-const previewDiv = document.getElementById('messagePreview');
+//const uploadBtn = document.getElementById('uploadBtn');
+//const fileInput = document.getElementById('fileInput');
+//const previewDiv = document.getElementById('messagePreview');
 
 
-// ------------------ Renderização de mensagens ------------------
-function renderMessage(msg) {
-    const div = document.createElement('div');
-    div.className = msg.senderId === auth.currentUser.uid ? 'message sent' : 'message received';
-
-    if(msg.fileUrl) {
-        const img = document.createElement('img');
-        img.src = msg.fileUrl;
-        img.alt = msg.fileName;
-        img.className = 'chat-image';
-        img.style.maxWidth = '200px';
-        div.appendChild(img);
-    }
-
-    if(msg.text) {
-        const p = document.createElement('p');
-        p.textContent = msg.text;
-        div.appendChild(p);
-    }
-
-    messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-// ------------------ Listener do Firestore (tempo real) ------------------
-const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
-onSnapshot(messagesQuery, (snapshot) => {
-    messagesDiv.innerHTML = ''; // limpa mensagens
-    snapshot.forEach(doc => renderMessage(doc.data()));
-});
-
-// ------------------ Envio de mensagens de texto ------------------
-sendBtn.addEventListener('click', async () => {
-    const text = msgInput.value.trim();
-    if (!text) return;
-
-    const user = auth.currentUser;
-    if (!user) {
-        alert('Faça login para enviar mensagens.');
-        return;
-    }
-
-    await addDoc(collection(db, 'messages'), {
-        text,
-        senderId: user.uid,
-        senderName: user.displayName || 'Usuário',
-        createdAt: serverTimestamp()
-    });
-
-    msgInput.value = '';
-});
-
-// ------------------ Upload de arquivos ------------------
-uploadBtn.addEventListener('click', () => fileInput.click());
-
-// Preview da imagem antes do upload
-fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    previewDiv.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.style.maxWidth = '100px';
-    img.alt = file.name;
-    previewDiv.appendChild(img);
-});
-
-// Upload real da imagem
+// --- Upload + Preview Unified ---
 fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -130,6 +62,15 @@ fileInput.addEventListener('change', async (e) => {
         return;
     }
 
+    // Show preview
+    previewDiv.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = '100px';
+    img.alt = file.name;
+    previewDiv.appendChild(img);
+
+    // Start upload
     const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
     const fileRef = ref(storage, path);
     const uploadTask = uploadBytesResumable(fileRef, file);
@@ -151,7 +92,6 @@ fileInput.addEventListener('change', async (e) => {
     }, async () => {
         try {
             const url = await getDownloadURL(uploadTask.snapshot.ref);
-
             await addDoc(collection(db, 'messages'), {
                 text: '',
                 fileName: file.name,
