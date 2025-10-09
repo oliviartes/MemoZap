@@ -25,5 +25,6 @@ const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app); // ✅ Agora funciona
-
+// Exporta para uso nos outros arquivos
+export { auth, db, storage };
 export { analytics };
