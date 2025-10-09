@@ -44,107 +44,118 @@ let currentUser = null;
 
 
 
-// variável para manter o arquivo selecionado até o usuário apertar Enviar
-
-
-// referência DOM (certifique-se que já existam)
 const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
+const previewDiv = document.getElementById('messagePreview');
 
 
+// ------------------ Renderização de mensagens ------------------
+function renderMessage(msg) {
+    const div = document.createElement('div');
+    div.className = msg.senderId === auth.currentUser.uid ? 'message sent' : 'message received';
 
-// habilita/desabilita botão enviar conforme houver texto ou arquivo
-function updateSendButtonState() {
-    const hasText = msgInput.value.trim() !== '';
-    const hasFile = pendingFile !== null;
-    sendBtn.disabled = !(hasText || hasFile);
+    if(msg.fileUrl) {
+        const img = document.createElement('img');
+        img.src = msg.fileUrl;
+        img.alt = msg.fileName;
+        img.className = 'chat-image';
+        img.style.maxWidth = '200px';
+        div.appendChild(img);
+    }
+
+    if(msg.text) {
+        const p = document.createElement('p');
+        p.textContent = msg.text;
+        div.appendChild(p);
+    }
+
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-msgInput.addEventListener('input', updateSendButtonState);
-
-// abrir file picker
-uploadBtn.addEventListener('click', () => {
-    fileInput.click();
+// ------------------ Listener do Firestore (tempo real) ------------------
+const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
+onSnapshot(messagesQuery, (snapshot) => {
+    messagesDiv.innerHTML = ''; // limpa mensagens
+    snapshot.forEach(doc => renderMessage(doc.data()));
 });
 
-// change apenas faz preview e guarda arquivo para envio posterior
-fileInput.addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    pendingFile = null;
-    previewDiv.innerHTML = '';
-
-    if (!file) {
-        updateSendButtonState();
-        return;
-    }
-
-    // somente imagens (opcional)
-    if (!file.type.startsWith('image/')) {
-        alert('Apenas imagens são permitidas.');
-        fileInput.value = '';
-        updateSendButtonState();
-        return;
-    }
-
-    // preview
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.style.maxWidth = '100px';
-    img.alt = file.name;
-    previewDiv.appendChild(img);
-
-    // guarda para envio quando o usuário clicar em "Enviar"
-    pendingFile = file;
-    updateSendButtonState();
-});
-
-// agora o sendBtn trata texto e/ou arquivo (upload + envio ao Firestore)
+// ------------------ Envio de mensagens de texto ------------------
 sendBtn.addEventListener('click', async () => {
+    const text = msgInput.value.trim();
+    if (!text) return;
+
     const user = auth.currentUser;
     if (!user) {
         alert('Faça login para enviar mensagens.');
         return;
     }
 
-    const text = msgInput.value.trim();
+    await addDoc(collection(db, 'messages'), {
+        text,
+        senderId: user.uid,
+        senderName: user.displayName || 'Usuário',
+        createdAt: serverTimestamp()
+    });
 
-    // se houver arquivo pendente, faz upload primeiro e obtém URL
-    if (pendingFile) {
-        const file = pendingFile;
-        // caminho no storage
-        const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
-        const fileRef = ref(storage, path);
-        const uploadTask = uploadBytesResumable(fileRef, file);
+    msgInput.value = '';
+});
 
-        // mostra progresso temporário
-        const progressDiv = document.createElement('div');
-        progressDiv.textContent = `Enviando ${file.name} (0%)`;
-        messagesDiv.appendChild(progressDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// ------------------ Upload de arquivos ------------------
+uploadBtn.addEventListener('click', () => fileInput.click());
 
-        // observa progresso
-        uploadTask.on('state_changed', (snapshot) => {
-            const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            progressDiv.textContent = `Enviando ${file.name} (${percent}%)`;
-        }, (error) => {
-            console.error('Erro upload:', error);
-            alert('Erro ao enviar arquivo: ' + error.message);
-            progressDiv.remove();
-        });
+// Preview da imagem antes do upload
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
+    previewDiv.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = '100px';
+    img.alt = file.name;
+    previewDiv.appendChild(img);
+});
+
+// Upload real da imagem
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const user = auth.currentUser;
+    if (!user) {
+        alert("Faça login primeiro para enviar arquivos.");
+        fileInput.value = '';
+        previewDiv.innerHTML = '';
+        return;
+    }
+
+    const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
+    const fileRef = ref(storage, path);
+    const uploadTask = uploadBytesResumable(fileRef, file);
+
+    const progressDiv = document.createElement('div');
+    progressDiv.textContent = `Enviando ${file.name} (0%)`;
+    messagesDiv.appendChild(progressDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    uploadTask.on('state_changed', (snapshot) => {
+        const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        progressDiv.textContent = `Enviando ${file.name} (${percent}%)`;
+    }, (error) => {
+        console.error('Erro upload:', error);
+        alert('Erro ao enviar arquivo: ' + error.message);
+        progressDiv.remove();
+        previewDiv.innerHTML = '';
+        fileInput.value = '';
+    }, async () => {
         try {
-            // aguarda finalização do upload (usa getDownloadURL sobre o mesmo fileRef)
-            await new Promise((resolve, reject) => {
-                uploadTask.then(resolve).catch(reject);
-            });
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
 
-            const url = await getDownloadURL(fileRef);
-
-            // salva no Firestore (inclui texto junto, caso exista)
             await addDoc(collection(db, 'messages'), {
-                text: text || '',                // se tiver texto, inclui junto
+                text: '',
                 fileName: file.name,
-                fileType: file.type || 'image/*',
+                fileType: file.type || 'application/octet-stream',
                 fileSize: file.size,
                 fileUrl: url,
                 senderId: user.uid,
@@ -152,41 +163,18 @@ sendBtn.addEventListener('click', async () => {
                 createdAt: serverTimestamp()
             });
 
-            // limpeza UI
-            setTimeout(() => progressDiv.remove(), 800);
+            setTimeout(() => progressDiv.remove(), 1500);
             previewDiv.innerHTML = '';
             fileInput.value = '';
-            pendingFile = null;
-            msgInput.value = '';
-            updateSendButtonState();
-
         } catch (err) {
             console.error('Erro finalizando upload:', err);
-            alert('Erro finalizando upload: ' + (err.message || err));
+            alert('Erro finalizando upload: ' + err.message);
             progressDiv.remove();
+            previewDiv.innerHTML = '';
+            fileInput.value = '';
         }
-
-        return; // já enviou (com ou sem texto)
-    }
-
-    // se não houver arquivo, envia apenas o texto
-    if (text) {
-        try {
-            await addDoc(collection(db, 'messages'), {
-                text,
-                senderId: user.uid,
-                senderName: user.displayName || 'Usuário',
-                createdAt: serverTimestamp()
-            });
-            msgInput.value = '';
-            updateSendButtonState();
-        } catch (err) {
-            console.error('Erro enviando texto:', err);
-            alert('Erro ao enviar mensagem: ' + (err.message || err));
-        }
-    }
+    });
 });
-
 
 
 
