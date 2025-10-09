@@ -1,34 +1,13 @@
-
-// chat.js (substituir/mesclar com seu arquivo existente)
-// Assumimos que firebaseConfig.js exporta: auth, db, storage
-
-import { uploadFile } from "./upload.js";
-
-
-
- import { auth, db, storage } from './firebaseConfig.js';
+import { auth, db } from './firebaseConfig.js';
 import { 
-  createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  sendEmailVerification, updateProfile, updateEmail, updatePassword,
-  signOut, sendPasswordResetEmail
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    sendEmailVerification, updateProfile, updateEmail, updatePassword,
+    signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 import { 
-  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
+    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
-import { 
-  ref, uploadBytes, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-
-
-
-
-
-
-
-
-
 
 // ------------------ DOM ------------------
 const messagesDiv = document.getElementById('messages');
