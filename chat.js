@@ -44,20 +44,14 @@ let currentUser = null;
 
 
 
-
-
-
-
-
 // variável para manter o arquivo selecionado até o usuário apertar Enviar
-let pendingFile = null;
+
 
 // referência DOM (certifique-se que já existam)
 const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
-const previewDiv = document.getElementById('messagePreview');
-const sendBtn = document.getElementById('sendBtn');
-const msgInput = document.getElementById('msgInput');
+
+
 
 // habilita/desabilita botão enviar conforme houver texto ou arquivo
 function updateSendButtonState() {
