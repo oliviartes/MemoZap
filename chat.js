@@ -13,12 +13,12 @@ import {
     ref, uploadBytes, getDownloadURL 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
-// ------------------ DOM ------------------
+// ------------------ DOM ELEMENTOS ------------------
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
-const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
 
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn');
@@ -34,68 +34,57 @@ const registerEmailInput = document.getElementById('registerEmail');
 const registerPasswordInput = document.getElementById('registerPassword');
 
 let currentUser = null;
-let selectedFile = null;
 
-// ------------------ Funções ------------------
+// ------------------ FUNÇÕES ------------------
 
-function addMessage(text, from = 'user', fileUrl = null) {
-    const msgContainer = document.createElement('div');
-    msgContainer.style.display = 'flex';
-    msgContainer.style.flexDirection = 'column';
-    msgContainer.style.alignItems = from === 'user' ? 'flex-end' : 'flex-start';
-    msgContainer.style.margin = '5px 0';
+function addMessage(content, from = 'user', type = 'text') {
+    const msg = document.createElement('div');
+    msg.style.margin = '5px 0';
+    msg.style.padding = '8px 12px';
+    msg.style.borderRadius = '15px';
+    msg.style.maxWidth = '60%';
+    msg.style.wordWrap = 'break-word';
+    msg.style.display = 'flex';
+    msg.style.flexDirection = 'column';
+    msg.style.alignItems = from === 'user' ? 'flex-end' : 'flex-start';
+    msg.style.alignSelf = from === 'user' ? 'flex-end' : 'flex-start';
 
-    // Texto da mensagem
-    if (text) {
-        const msg = document.createElement('div');
-        msg.textContent = text;
-        msg.style.padding = '8px 12px';
-        msg.style.borderRadius = '15px';
-        msg.style.maxWidth = '60%';
-        msg.style.wordWrap = 'break-word';
-        msg.style.background = from === 'user' ? '#05635f' : '#ccc';
-        msg.style.color = from === 'user' ? 'white' : 'black';
-        msgContainer.appendChild(msg);
+    if (type === 'image') {
+        const img = document.createElement('img');
+        img.src = content;
+        img.style.maxWidth = '200px';
+        img.style.borderRadius = '10px';
+        msg.appendChild(img);
+    } else if (type === 'video') {
+        const video = document.createElement('video');
+        video.src = content;
+        video.controls = true;
+        video.style.maxWidth = '200px';
+        msg.appendChild(video);
+    } else {
+        const textDiv = document.createElement('div');
+        textDiv.textContent = content;
+        msg.appendChild(textDiv);
     }
 
-    // Se houver arquivo, adiciona
-    if (fileUrl) {
-        let media;
-        if (fileUrl.match(/\.(mp4|webm|ogg)$/i)) {
-            media = document.createElement('video');
-            media.controls = true;
-        } else {
-            media = document.createElement('img');
-        }
-        media.src = fileUrl;
-        media.style.maxWidth = '200px';
-        media.style.borderRadius = '10px';
-        media.style.marginTop = '5px';
-        msgContainer.appendChild(media);
+    if (from === 'user') {
+        msg.style.background = '#05635f';
+        msg.style.color = 'white';
+    } else {
+        msg.style.background = '#ccc';
+        msg.style.color = '#000';
     }
 
-    messagesDiv.appendChild(msgContainer);
+    messagesDiv.appendChild(msg);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-async function sendMessage(text) {
+async function sendMessage(content, type = 'text') {
     if (!currentUser) return alert("Faça login primeiro!");
-
-    let fileUrl = null;
-
-    // Envia o arquivo, se houver
-    if (selectedFile) {
-        const fileRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(fileRef, selectedFile);
-        fileUrl = await getDownloadURL(fileRef);
-        selectedFile = null;
-        fileInput.value = '';
-    }
-
     try {
         await addDoc(collection(db, "messages"), {
-            text,
-            fileUrl,
+            content,
+            type,
             uid: currentUser.uid,
             email: currentUser.email,
             timestamp: serverTimestamp()
@@ -112,48 +101,62 @@ function listenMessages() {
         snapshot.forEach(doc => {
             const msgData = doc.data();
             addMessage(
-                msgData.text || '',
+                msgData.content,
                 msgData.uid === currentUser?.uid ? 'user' : 'bot',
-                msgData.fileUrl || null
+                msgData.type || 'text'
             );
         });
     });
 }
 
-// ------------------ Eventos ------------------
+// ------------------ UPLOAD DE ARQUIVOS ------------------
 
-// Upload de arquivo
-uploadBtn.addEventListener('click', () => {
-    fileInput.click();
-});
+uploadBtn.addEventListener('click', () => fileInput.click());
 
-fileInput.addEventListener('change', () => {
-    selectedFile = fileInput.files[0];
-    if (selectedFile) {
-        sendBtn.disabled = false;
-        alert(`Arquivo selecionado: ${selectedFile.name}`);
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
+
+    try {
+        await uploadBytes(fileRef, file);
+        const fileURL = await getDownloadURL(fileRef);
+
+        const fileType = file.type.startsWith('image/') ? 'image' :
+                         file.type.startsWith('video/') ? 'video' : 'text';
+
+        await sendMessage(fileURL, fileType);
+        addMessage(fileURL, 'user', fileType);
+
+        console.log("Arquivo enviado:", fileURL);
+    } catch (err) {
+        alert("Erro ao enviar arquivo: " + err.message);
+        console.error(err);
     }
 });
 
-// Habilitar botão enviar ao digitar texto
+// ------------------ EVENTOS ------------------
+
 msgInput.addEventListener('input', () => {
-    sendBtn.disabled = !msgInput.value.trim() && !selectedFile;
+    sendBtn.disabled = msgInput.value.trim() === '';
 });
 
-// Enviar mensagem
 sendBtn.addEventListener('click', async () => {
     const text = msgInput.value.trim();
-    if (text || selectedFile) {
-        await sendMessage(text);
+    if (text !== '') {
+        await sendMessage(text, 'text');
         msgInput.value = '';
         sendBtn.disabled = true;
     }
 });
+
 msgInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendBtn.click();
 });
 
-// Login
+// ------------------ AUTENTICAÇÃO ------------------
+
 loginBtn.addEventListener('click', async () => {
     const email = loginEmailInput.value.trim();
     const password = loginPasswordInput.value.trim();
@@ -169,7 +172,6 @@ loginBtn.addEventListener('click', async () => {
     }
 });
 
-// Registrar
 registerBtn.addEventListener('click', async () => {
     const email = registerEmailInput.value.trim();
     const password = registerPasswordInput.value.trim();
@@ -185,7 +187,6 @@ registerBtn.addEventListener('click', async () => {
     }
 });
 
-// Atualizar perfil
 updateProfileBtn.addEventListener('click', async () => {
     if (!currentUser) return alert("Faça login primeiro!");
     const displayName = prompt("Digite novo nome:");
@@ -198,7 +199,6 @@ updateProfileBtn.addEventListener('click', async () => {
     }
 });
 
-// Atualizar email
 updateEmailBtn.addEventListener('click', async () => {
     if (!currentUser) return alert("Faça login primeiro!");
     const newEmail = prompt("Digite novo email:");
@@ -211,7 +211,6 @@ updateEmailBtn.addEventListener('click', async () => {
     }
 });
 
-// Atualizar senha
 updatePasswordBtn.addEventListener('click', async () => {
     if (!currentUser) return alert("Faça login primeiro!");
     const newPass = prompt("Digite nova senha:");
@@ -224,7 +223,6 @@ updatePasswordBtn.addEventListener('click', async () => {
     }
 });
 
-// Enviar verificação
 sendVerificationBtn.addEventListener('click', async () => {
     if (!currentUser) return alert("Faça login primeiro!");
     try {
@@ -235,7 +233,6 @@ sendVerificationBtn.addEventListener('click', async () => {
     }
 });
 
-// Resetar senha
 resetPasswordBtn.addEventListener('click', async () => {
     const email = prompt("Digite seu email para resetar a senha:");
     if (!email) return;
