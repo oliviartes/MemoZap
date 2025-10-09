@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 import { 
-    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp 
+    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // ------------------ DOM ------------------
@@ -35,26 +35,56 @@ let currentUser = null;
 
 // ------------------ Funções ------------------
 
-function addMessage(text, from = 'user') {
-    const msg = document.createElement('div');
-    msg.textContent = text;
-    msg.style.margin = '5px 0';
-    msg.style.padding = '8px 12px';
-    msg.style.borderRadius = '15px';
-    msg.style.maxWidth = '60%';
-    msg.style.wordWrap = 'break-word';
+function addMessage(text, from = 'user', id = null, likes = 0) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message-item';
+    msgDiv.style.margin = '5px 0';
+    msgDiv.style.padding = '8px 12px';
+    msgDiv.style.borderRadius = '15px';
+    msgDiv.style.maxWidth = '60%';
+    msgDiv.style.wordWrap = 'break-word';
+    msgDiv.style.display = 'flex';
+    msgDiv.style.alignItems = 'center';
+    msgDiv.style.justifyContent = 'space-between';
+    msgDiv.style.background = from === 'user' ? '#05635f' : '#ccc';
+    msgDiv.style.color = from === 'user' ? 'white' : '#000';
 
+    const textSpan = document.createElement('span');
+    textSpan.textContent = text;
+    textSpan.style.flex = '1';
+    msgDiv.appendChild(textSpan);
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.gap = '5px';
+
+    // Botão curtir
+    const likeBtn = document.createElement('button');
+    likeBtn.textContent = `❤️ ${likes}`;
+    likeBtn.style.cursor = 'pointer';
+    likeBtn.addEventListener('click', async () => {
+        if(!id) return;
+        const msgRef = doc(db, "messages", id);
+        await updateDoc(msgRef, { likes: likes + 1 });
+    });
+    actionsDiv.appendChild(likeBtn);
+
+    // Botão apagar (apenas para suas mensagens)
     if(from === 'user') {
-        msg.style.background = '#05635f';
-        msg.style.color = 'white';
-        msg.style.alignSelf = 'flex-end';
-    } else {
-        msg.style.background = '#ccc';
-        msg.style.color = '#000';
-        msg.style.alignSelf = 'flex-start';
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑️';
+        delBtn.style.cursor = 'pointer';
+        delBtn.addEventListener('click', async () => {
+            if(!id) return;
+            const msgRef = doc(db, "messages", id);
+            await deleteDoc(msgRef);
+        });
+        actionsDiv.appendChild(delBtn);
     }
 
-    messagesDiv.appendChild(msg);
+    msgDiv.appendChild(actionsDiv);
+
+    messagesDiv.appendChild(msgDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
@@ -65,8 +95,11 @@ async function sendMessage(text) {
             text,
             uid: currentUser.uid,
             email: currentUser.email,
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            likes: 0
         });
+        msgInput.value = '';
+        sendBtn.disabled = true;
     } catch(err) {
         console.error("Erro ao enviar mensagem:", err);
     }
@@ -76,9 +109,14 @@ function listenMessages() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
         messagesDiv.innerHTML = '';
-        snapshot.forEach(doc => {
-            const msgData = doc.data();
-            addMessage(msgData.text, msgData.uid === currentUser?.uid ? 'user' : 'bot');
+        snapshot.forEach(docItem => {
+            const msgData = docItem.data();
+            addMessage(
+                msgData.text,
+                msgData.uid === currentUser?.uid ? 'user' : 'bot',
+                docItem.id,
+                msgData.likes || 0
+            );
         });
     });
 }
@@ -129,14 +167,7 @@ msgInput.addEventListener('input', () => {
 });
 
 // Enviar mensagem
-sendBtn.addEventListener('click', async () => {
-    const text = msgInput.value.trim();
-    if(text !== '') {
-        await sendMessage(text);
-        msgInput.value = '';
-        sendBtn.disabled = true;
-    }
-});
+sendBtn.addEventListener('click', sendMessage);
 msgInput.addEventListener('keypress', (e) => {
     if(e.key === 'Enter') sendBtn.click();
 });
