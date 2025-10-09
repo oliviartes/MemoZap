@@ -1,13 +1,28 @@
-import { auth, db } from './firebaseConfig.js';
+import { uploadFile } from "./upload.js";
+
+import { auth, db, storage } from './firebaseConfig.js';
 import { 
-    createUserWithEmailAndPassword, signInWithEmailAndPassword,
-    sendEmailVerification, updateProfile, updateEmail, updatePassword,
-    signOut, sendPasswordResetEmail
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendEmailVerification, updateProfile, updateEmail, updatePassword,
+  signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 import { 
-    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+import { 
+  ref, uploadBytes, uploadBytesResumable, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+
+
+
+
+
+
+
+
 
 // ------------------ DOM ------------------
 const messagesDiv = document.getElementById('messages');
@@ -32,6 +47,83 @@ const addContactInput = document.getElementById('addContactInput');
 const contactsListDiv = document.getElementById('contactsList');
 
 let currentUser = null;
+
+
+
+
+// ------------------ Upload de arquivos ------------------
+
+uploadBtn.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    // Verifica se o usuário está logado
+    const user = auth.currentUser;
+    if (!user) {
+        alert("Faça login primeiro para enviar arquivos.");
+        fileInput.value = '';
+        return;
+    }
+
+    // Caminho de upload: messages/{uid}/{timestamp}_{filename}
+    const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
+    const fileRef = storageRef(storage, path);
+    const uploadTask = uploadBytesResumable(fileRef, file);
+
+    // UI temporária de progresso
+    const progressDiv = document.createElement('div');
+    progressDiv.textContent = `Enviando ${file.name} (0%)`;
+    messagesDiv.appendChild(progressDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    uploadTask.on('state_changed', (snapshot) => {
+        const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        progressDiv.textContent = `Enviando ${file.name} (${percent}%)`;
+    }, (error) => {
+        console.error('Erro upload:', error);
+        alert('Erro ao enviar arquivo: ' + error.message);
+        progressDiv.remove();
+    }, async () => {
+        try {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            progressDiv.textContent = `Upload concluído: ${file.name}`;
+
+            // Salva mensagem no Firestore para que todos vejam
+            const messageData = {
+                text: '', // sem texto, apenas arquivo
+                fileName: file.name,
+                fileType: file.type || 'application/octet-stream',
+                fileSize: file.size,
+                fileUrl: url,
+                senderId: user.uid,
+                senderName: user.displayName || 'Usuário',
+                createdAt: serverTimestamp()
+            };
+            await addDoc(collection(db, 'messages'), messageData);
+
+            // Limpa input e remove progresso depois
+            setTimeout(() => progressDiv.remove(), 1500);
+            fileInput.value = '';
+        } catch (err) {
+            console.error('Erro ao finalizar upload:', err);
+            alert('Erro finalizando upload: ' + err.message);
+            progressDiv.remove();
+            fileInput.value = '';
+        }
+    });
+});
+
+
+
+
+
+
+
+
 
 // ------------------ Funções ------------------
 
