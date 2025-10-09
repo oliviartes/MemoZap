@@ -9,8 +9,9 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-st
 const firebaseConfig = {
   apiKey: "AIzaSyAeyyLnVse-vvsRRuNsUsBkaHhCoxC8dmQ",
   authDomain: "memofuturo.firebaseapp.com",
+  databaseURL: "https://memofuturo-default-rtdb.firebaseio.com",
   projectId: "memofuturo",
-  storageBucket: "memofuturo.appspot.com", // ⚠️ OBS: geralmente termina com ".appspot.com"
+  storageBucket: "memofuturo.firebasestorage.app",
   messagingSenderId: "932046699518",
   appId: "1:932046699518:web:cb6d1e78618689dcbd9eaf",
   measurementId: "G-3CEEXGN9X6"
