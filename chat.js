@@ -9,7 +9,7 @@ import {
     collection, addDoc, query, orderBy, onSnapshot, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// DOM
+// ------------------ DOM ------------------
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -26,6 +26,10 @@ const loginEmailInput = document.getElementById('loginEmail');
 const loginPasswordInput = document.getElementById('loginPassword');
 const registerEmailInput = document.getElementById('registerEmail');
 const registerPasswordInput = document.getElementById('registerPassword');
+
+const addContactBtn = document.getElementById('addContactBtn');
+const addContactInput = document.getElementById('addContactInput');
+const contactsListDiv = document.getElementById('contactsList');
 
 let currentUser = null;
 
@@ -79,6 +83,44 @@ function listenMessages() {
     });
 }
 
+// ------------------ Contatos ------------------
+
+function renderContacts(snapshot) {
+    contactsListDiv.innerHTML = '';
+    snapshot.forEach(doc => {
+        const contact = doc.data();
+        const contactDiv = document.createElement('div');
+        contactDiv.textContent = contact.email;
+        contactDiv.className = 'contact-item';
+        contactsListDiv.appendChild(contactDiv);
+    });
+}
+
+function listenContacts() {
+    if(!currentUser) return;
+    const contactsRef = collection(db, "users", currentUser.uid, "contacts");
+    onSnapshot(contactsRef, snapshot => {
+        renderContacts(snapshot);
+    });
+}
+
+async function addContact(email) {
+    if(!currentUser) return alert("Faça login primeiro!");
+    try {
+        const contactsRef = collection(db, "users", currentUser.uid, "contacts");
+        await addDoc(contactsRef, { 
+            email, 
+            addedAt: serverTimestamp() 
+        });
+        addContactInput.value = '';
+        alert("Contato adicionado com sucesso!");
+        listenContacts();
+    } catch(err) {
+        console.error("Erro ao adicionar contato:", err);
+        alert("Erro ao adicionar contato: " + err.message);
+    }
+}
+
 // ------------------ Eventos ------------------
 
 // Habilitar botão de enviar ao digitar
@@ -99,6 +141,15 @@ msgInput.addEventListener('keypress', (e) => {
     if(e.key === 'Enter') sendBtn.click();
 });
 
+// Adicionar contato
+addContactBtn.addEventListener('click', () => {
+    const email = addContactInput.value.trim();
+    if(!email) return alert("Digite um email válido!");
+    addContact(email);
+});
+
+// ------------------ Login / Registro ------------------
+
 // Login
 loginBtn.addEventListener('click', async () => {
     const email = loginEmailInput.value.trim();
@@ -110,6 +161,7 @@ loginBtn.addEventListener('click', async () => {
         alert(`Bem-vindo, ${currentUser.email}`);
         sendBtn.disabled = false;
         listenMessages();
+        listenContacts();
     } catch(err) {
         alert("Erro no login: " + err.message);
     }
@@ -126,10 +178,13 @@ registerBtn.addEventListener('click', async () => {
         alert(`Conta criada com sucesso: ${currentUser.email}`);
         sendBtn.disabled = false;
         listenMessages();
+        listenContacts();
     } catch(err) {
         alert("Erro ao registrar: " + err.message);
     }
 });
+
+// ------------------ Atualizações de Perfil ------------------
 
 // Atualizar perfil
 updateProfileBtn.addEventListener('click', async () => {
