@@ -49,27 +49,45 @@ const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
 const previewDiv = document.getElementById('messagePreview');
 
+
+
+
+
+
+
+
 // ------------------ Renderização de mensagens ------------------
-function renderMessage(msg) {
-    const div = document.createElement('div');
-    div.className = msg.senderId === auth.currentUser.uid ? 'message sent' : 'message received';
+function renderMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.classList.add(message.senderId === auth.currentUser.uid ? 'sent' : 'received');
 
-    if(msg.fileUrl) {
+    // Se tiver imagem (fileUrl)
+    if (message.fileUrl) {
         const img = document.createElement('img');
-        img.src = msg.fileUrl;
-        img.alt = msg.fileName;
-        img.className = 'chat-image';
-        img.style.maxWidth = '200px';
-        div.appendChild(img);
+        img.src = message.fileUrl;
+        img.alt = message.fileName || 'imagem';
+        img.classList.add('chat-image');
+        img.style.maxWidth = '160px';
+        img.style.borderRadius = '10px';
+        img.style.cursor = 'pointer';
+
+        // Clicável pra abrir em tamanho real
+        img.addEventListener('click', () => {
+            window.open(message.fileUrl, '_blank');
+        });
+
+        messageDiv.appendChild(img);
     }
 
-    if(msg.text) {
+    // Se tiver texto
+    if (message.text && message.text.trim() !== '') {
         const p = document.createElement('p');
-        p.textContent = msg.text;
-        div.appendChild(p);
+        p.textContent = message.text;
+        messageDiv.appendChild(p);
     }
 
-    messagesDiv.appendChild(div);
+    messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
@@ -175,6 +193,8 @@ fileInput.addEventListener('change', async (e) => {
         }
     });
 });
+
+
 
 
 
