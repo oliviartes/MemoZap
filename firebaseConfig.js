@@ -22,4 +22,6 @@ const analytics = getAnalytics(app);
 // Exporta os módulos principais
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app); // 🔥 ESSENCIAL para upload funcionar
+
 export { analytics };
