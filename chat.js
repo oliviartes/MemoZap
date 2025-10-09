@@ -4,22 +4,31 @@
 
 import { uploadFile } from "./upload.js";
 
-import { auth, db, storage } from './firebaseConfig.js';
+
+
+ import { auth, db, storage } from './firebaseConfig.js';
 import { 
-    createUserWithEmailAndPassword, signInWithEmailAndPassword,
-    sendEmailVerification, updateProfile, updateEmail, updatePassword,
-    signOut, sendPasswordResetEmail
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendEmailVerification, updateProfile, updateEmail, updatePassword,
+  signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 import { 
-    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, runTransaction 
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-import {
-    ref as storageRef,
-    uploadBytesResumable,
-    getDownloadURL
+import { 
+  ref, uploadBytes, getDownloadURL 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+
+
+
+
+
+
+
+
 
 // ------------------ DOM ------------------
 const messagesDiv = document.getElementById('messages');
