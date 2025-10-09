@@ -51,6 +51,7 @@ let currentUser = null;
 
 
 
+
 // ------------------ Upload de arquivos ------------------
 
 uploadBtn.addEventListener('click', () => {
@@ -71,7 +72,7 @@ fileInput.addEventListener('change', async (e) => {
 
     // Caminho de upload: messages/{uid}/{timestamp}_{filename}
     const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
-    const fileRef = storageRef(storage, path);
+    const fileRef = ref(storage, path); // ✅ Corrigido: ref() em vez de storageRef()
     const uploadTask = uploadBytesResumable(fileRef, file);
 
     // UI temporária de progresso
