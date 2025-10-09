@@ -35,7 +35,7 @@ let currentUser = null;
 
 // ------------------ Funções ------------------
 
-function addMessage(text, from = 'user', id = null, likes = 0) {
+function addMessage(text, from = 'user', id = null, likes = 0, seen = false) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message-item';
     msgDiv.style.margin = '5px 0';
@@ -69,7 +69,7 @@ function addMessage(text, from = 'user', id = null, likes = 0) {
     });
     actionsDiv.appendChild(likeBtn);
 
-    // Botão apagar (apenas para suas mensagens)
+    // Botão apagar e status de visualização
     if(from === 'user') {
         const delBtn = document.createElement('button');
         delBtn.textContent = '🗑️';
@@ -80,10 +80,14 @@ function addMessage(text, from = 'user', id = null, likes = 0) {
             await deleteDoc(msgRef);
         });
         actionsDiv.appendChild(delBtn);
+
+        const seenSpan = document.createElement('span');
+        seenSpan.textContent = seen ? '✔✔' : '✔';
+        seenSpan.style.marginLeft = '5px';
+        actionsDiv.appendChild(seenSpan);
     }
 
     msgDiv.appendChild(actionsDiv);
-
     messagesDiv.appendChild(msgDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
@@ -96,7 +100,8 @@ async function sendMessage(text) {
             uid: currentUser.uid,
             email: currentUser.email,
             timestamp: serverTimestamp(),
-            likes: 0
+            likes: 0,
+            seen: false
         });
         msgInput.value = '';
         sendBtn.disabled = true;
@@ -109,14 +114,22 @@ function listenMessages() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
         messagesDiv.innerHTML = '';
-        snapshot.forEach(docItem => {
+        snapshot.forEach(async docItem => {
             const msgData = docItem.data();
+            const isUser = msgData.uid === currentUser?.uid;
             addMessage(
                 msgData.text,
-                msgData.uid === currentUser?.uid ? 'user' : 'bot',
+                isUser ? 'user' : 'bot',
                 docItem.id,
-                msgData.likes || 0
+                msgData.likes || 0,
+                msgData.seen || false
             );
+
+            // Marcar como visualizada se for do outro usuário
+            if(!isUser && !msgData.seen) {
+                const msgRef = doc(db, "messages", docItem.id);
+                await updateDoc(msgRef, { seen: true });
+            }
         });
     });
 }
@@ -171,13 +184,18 @@ sendBtn.addEventListener('click', async () => {
     const text = msgInput.value.trim();
     if(text !== '') {
         await sendMessage(text);
-        msgInput.value = '';
+
+ msgInput.value = '';
         sendBtn.disabled = true;
+
+
     }
 });
 msgInput.addEventListener('keypress', (e) => {
     if(e.key === 'Enter') sendBtn.click();
 });
+
+
 
 // Adicionar contato
 addContactBtn.addEventListener('click', () => {
@@ -185,11 +203,6 @@ addContactBtn.addEventListener('click', () => {
     if(!email) return alert("Digite um email válido!");
     addContact(email);
 });
-
-
-
-
-
 
 // ------------------ Login / Registro ------------------
 
