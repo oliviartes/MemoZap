@@ -7,19 +7,20 @@ import {
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } 
     from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// DOM
+// Elementos do DOM
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
 
 const loginEmail = document.getElementById('loginEmail');
 const loginPassword = document.getElementById('loginPassword');
-const loginBtn = document.getElementById('loginBtn');
-
 const registerEmail = document.getElementById('registerEmail');
 const registerPassword = document.getElementById('registerPassword');
-const registerBtn = document.getElementById('registerBtn');
 
+const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn');
+const addContactBtn = document.getElementById('addContactBtn');
+const addContactInput = document.getElementById('addContactInput');
 const updateProfileBtn = document.getElementById('updateProfileBtn');
 const updateEmailBtn = document.getElementById('updateEmailBtn');
 const updatePasswordBtn = document.getElementById('updatePasswordBtn');
@@ -45,7 +46,7 @@ function addMessage(text, from = 'user') {
 }
 
 async function sendMessage(text) {
-    if (!currentUser) return alert("Faça login primeiro!");
+    if(!currentUser) return alert("Faça login primeiro!");
     try {
         await addDoc(collection(db, "messages"), {
             text,
@@ -53,7 +54,9 @@ async function sendMessage(text) {
             email: currentUser.email,
             timestamp: serverTimestamp()
         });
-    } catch(err) { console.error(err); }
+    } catch(err) {
+        console.error("Erro ao enviar mensagem:", err);
+    }
 }
 
 function listenMessages() {
@@ -61,8 +64,8 @@ function listenMessages() {
     onSnapshot(q, (snapshot) => {
         messagesDiv.innerHTML = '';
         snapshot.forEach(doc => {
-            const msg = doc.data();
-            addMessage(msg.text, msg.uid === currentUser?.uid ? 'user' : 'bot');
+            const msgData = doc.data();
+            addMessage(msgData.text, msgData.uid === currentUser?.uid ? 'user' : 'bot');
         });
     });
 }
@@ -100,7 +103,7 @@ registerBtn.addEventListener('click', async () => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         currentUser = userCredential.user;
-        alert(`Conta criada: ${currentUser.email}`);
+        alert(`Conta criada com sucesso: ${currentUser.email}`);
         listenMessages();
     } catch(err) {
         alert("Erro ao registrar: " + err.message);
@@ -140,7 +143,7 @@ updatePasswordBtn.addEventListener('click', async () => {
     } catch(err) { alert(err.message); }
 });
 
-// Enviar verificação
+// Enviar verificação de email
 sendVerificationBtn.addEventListener('click', async () => {
     if(!currentUser) return alert("Faça login primeiro!");
     try {
@@ -157,4 +160,23 @@ resetPasswordBtn.addEventListener('click', async () => {
         await auth.sendPasswordResetEmail(email);
         alert("Email de redefinição enviado!");
     } catch(err) { alert(err.message); }
+});
+
+// Adicionar contato
+addContactBtn.addEventListener('click', async () => {
+    if(!currentUser) return alert("Faça login primeiro!");
+    const contactEmail = addContactInput.value.trim();
+    if(!contactEmail) return alert("Digite o email do contato");
+
+    try {
+        await addDoc(collection(db, 'usuarios', currentUser.uid, 'contatos'), {
+            email: contactEmail,
+            addedAt: new Date()
+        });
+        alert('Contato adicionado com sucesso!');
+        addContactInput.value = '';
+    } catch(err) {
+        console.error(err);
+        alert('Erro ao adicionar contato');
+    }
 });
