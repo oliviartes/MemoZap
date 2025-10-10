@@ -44,9 +44,9 @@ let currentUser = null;
 
 
 
-//const uploadBtn = document.getElementById('uploadBtn');
-//const fileInput = document.getElementById('fileInput');
-//const previewDiv = document.getElementById('messagePreview');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const previewDiv = document.getElementById('messagePreview');
 
 
 // --- Upload + Preview Unified ---
