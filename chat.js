@@ -23,13 +23,6 @@ const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
 const previewDiv = document.getElementById('messagePreview');
 
-
-
-
-
-
-
-
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -115,7 +108,6 @@ sendBtn.addEventListener('click', async () => {
 
 
 
-
 // ------------------ Upload de arquivos + preview ------------------
 uploadBtn.addEventListener('click', () => fileInput.click());
 
@@ -141,7 +133,7 @@ fileInput.addEventListener('change', async (e) => {
         previewDiv.appendChild(img);
     }
 
-    // --- Upload ---
+    // --- Upload para Firebase Storage ---
     const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
     const fileRef = ref(storage, path);
     const uploadTask = uploadBytesResumable(fileRef, file);
@@ -184,6 +176,7 @@ fileInput.addEventListener('change', async (e) => {
         }
     );
 });
+
 
 
 
