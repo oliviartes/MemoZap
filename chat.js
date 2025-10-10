@@ -19,10 +19,10 @@ import {
 
 // ------------------ DOM ------------------
 
+// ------------------ DOM ------------------
 const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
 const previewDiv = document.getElementById('messagePreview');
-
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
