@@ -46,79 +46,117 @@ let currentUser = null;
 
 const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
-const previewDiv = document.getElementById('messagePreview');
+//const previewDiv = document.getElementById('messagePreview');
 
 
-// --- Upload + Preview Unified ---
+// --- Botão para abrir seletor de arquivo ---
+uploadBtn.addEventListener('click', () => {
+    fileInput.accept = 'image/*'; // aceita todos os tipos de imagem
+    fileInput.click();
+});
+
+// --- Upload automático ao selecionar ---
 fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Verifica se é uma imagem válida
+    if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecione apenas arquivos de imagem.');
+        fileInput.value = '';
+        return;
+    }
 
     const user = auth.currentUser;
     if (!user) {
         alert("Faça login primeiro para enviar arquivos.");
         fileInput.value = '';
-        previewDiv.innerHTML = '';
         return;
     }
 
-    // Show preview
-    previewDiv.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.style.maxWidth = '100px';
-    img.alt = file.name;
-    previewDiv.appendChild(img);
-
-    // Start upload
-    const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
-    const fileRef = ref(storage, path);
-    const uploadTask = uploadBytesResumable(fileRef, file);
-
+    // Mostra progresso
     const progressDiv = document.createElement('div');
     progressDiv.textContent = `Enviando ${file.name} (0%)`;
     messagesDiv.appendChild(progressDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-    uploadTask.on('state_changed', (snapshot) => {
-        const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        progressDiv.textContent = `Enviando ${file.name} (${percent}%)`;
-    }, (error) => {
-        console.error('Erro upload:', error);
-        alert('Erro ao enviar arquivo: ' + error.message);
-        progressDiv.remove();
-        previewDiv.innerHTML = '';
-        fileInput.value = '';
-    }, async () => {
-        try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            await addDoc(collection(db, 'messages'), {
-                text: '',
-                fileName: file.name,
-                fileType: file.type || 'application/octet-stream',
-                fileSize: file.size,
-                fileUrl: url,
-                senderId: user.uid,
-                senderName: user.displayName || 'Usuário',
-                createdAt: serverTimestamp()
-            });
+    try {
+        const path = `messages/${user.uid}/${Date.now()}_${file.name}`;
+        const fileRef = ref(storage, path);
+        const uploadTask = uploadBytesResumable(fileRef, file);
 
-            setTimeout(() => progressDiv.remove(), 1500);
-            previewDiv.innerHTML = '';
-            fileInput.value = '';
-        } catch (err) {
-            console.error('Erro finalizando upload:', err);
-            alert('Erro finalizando upload: ' + err.message);
-            progressDiv.remove();
-            previewDiv.innerHTML = '';
-            fileInput.value = '';
-        }
-    });
+        // Atualiza progresso
+        uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+                const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                progressDiv.textContent = `Enviando ${file.name} (${percent}%)`;
+            },
+            (error) => {
+                console.error('Erro upload:', error);
+                alert('Erro ao enviar arquivo: ' + error.message);
+                progressDiv.remove();
+                fileInput.value = '';
+            },
+            async () => {
+                // Upload concluído
+                const url = await getDownloadURL(uploadTask.snapshot.ref);
+
+                // Salva no Firestore
+                await addDoc(collection(db, 'messages'), {
+                    text: '',
+                    fileName: file.name,
+                    fileType: file.type,
+                    fileSize: file.size,
+                    fileUrl: url,
+                    senderId: user.uid,
+                    senderName: user.displayName || 'Usuário',
+                    createdAt: serverTimestamp()
+                });
+
+                progressDiv.textContent = `✅ ${file.name} enviado!`;
+                setTimeout(() => progressDiv.remove(), 1500);
+                fileInput.value = '';
+            }
+        );
+    } catch (err) {
+        console.error('Erro finalizando upload:', err);
+        alert('Erro finalizando upload: ' + err.message);
+        progressDiv.remove();
+        fileInput.value = '';
+    }
 });
 
+// --- Renderização de mensagens (inclui exibição de imagem) ---
+function renderMessage(msg) {
+    const div = document.createElement('div');
+    const currentUser = auth.currentUser;
+    div.className = currentUser && msg.senderId === currentUser.uid
+        ? 'message sent'
+        : 'message received';
 
+    // Exibe imagem, se houver
+    if (msg.fileUrl && msg.fileType?.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = msg.fileUrl;
+        img.alt = msg.fileName || 'Imagem enviada';
+        img.className = 'chat-image';
+        img.style.maxWidth = '200px';
+        img.style.borderRadius = '10px';
+        img.style.marginBottom = '5px';
+        div.appendChild(img);
+    }
 
+    // Exibe texto (caso exista)
+    if (msg.text && msg.text.trim() !== '') {
+        const p = document.createElement('p');
+        p.textContent = msg.text;
+        div.appendChild(p);
+    }
 
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
 
 
