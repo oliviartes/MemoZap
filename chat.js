@@ -1,28 +1,25 @@
 import { uploadFile } from "./upload.js";
 
+
+// ------------------ IMPORTS ------------------
 import { auth, db, storage } from './firebaseConfig.js';
 import { 
-  createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  sendEmailVerification, updateProfile, updateEmail, updatePassword,
-  signOut, sendPasswordResetEmail
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    sendEmailVerification, updateProfile, updateEmail, updatePassword,
+    signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 import { 
-  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
+    collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-import { 
-  ref, uploadBytes, uploadBytesResumable, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-
-
-
-// ------------------ DOM ------------------
+import { ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
 // ------------------ DOM ------------------
 const uploadBtn = document.getElementById('uploadBtn');
 const fileInput = document.getElementById('fileInput');
 const previewDiv = document.getElementById('messagePreview');
+
 const messagesDiv = document.getElementById('messages');
 const msgInput = document.getElementById('msgInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -46,25 +43,19 @@ const contactsListDiv = document.getElementById('contactsList');
 
 let currentUser = null;
 
-
-
-
-
-
-
-
-
 // ------------------ Renderização de mensagens ------------------
 function renderMessage(msg) {
     const div = document.createElement('div');
-    div.className = msg.senderId === auth.currentUser.uid ? 'message sent' : 'message received';
+    div.className = msg.senderId === auth.currentUser?.uid ? 'message sent' : 'message received';
 
     if(msg.fileUrl) {
         const img = document.createElement('img');
         img.src = msg.fileUrl;
-        img.alt = msg.fileName;
+        img.alt = msg.fileName || 'Imagem enviada';
         img.className = 'chat-image';
         img.style.maxWidth = '200px';
+        img.style.borderRadius = '10px';
+        img.style.marginBottom = '5px';
         div.appendChild(img);
     }
 
@@ -80,18 +71,18 @@ function renderMessage(msg) {
 
 // ------------------ Listener do Firestore (tempo real) ------------------
 const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
-onSnapshot(messagesQuery, (snapshot) => {
-    messagesDiv.innerHTML = ''; // limpa mensagens
+onSnapshot(messagesQuery, snapshot => {
+    messagesDiv.innerHTML = '';
     snapshot.forEach(doc => renderMessage(doc.data()));
 });
 
 // ------------------ Envio de mensagens de texto ------------------
 sendBtn.addEventListener('click', async () => {
     const text = msgInput.value.trim();
-    if (!text) return;
+    if(!text) return;
 
     const user = auth.currentUser;
-    if (!user) {
+    if(!user) {
         alert('Faça login para enviar mensagens.');
         return;
     }
@@ -106,17 +97,15 @@ sendBtn.addEventListener('click', async () => {
     msgInput.value = '';
 });
 
-
-
 // ------------------ Upload de arquivos + preview ------------------
 uploadBtn.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if(!file) return;
 
     const user = auth.currentUser;
-    if (!user) {
+    if(!user) {
         alert("Faça login primeiro para enviar arquivos.");
         fileInput.value = '';
         previewDiv.innerHTML = '';
@@ -125,7 +114,7 @@ fileInput.addEventListener('change', async (e) => {
 
     // --- Preview da imagem ---
     previewDiv.innerHTML = '';
-    if (file.type.startsWith('image/')) {
+    if(file.type.startsWith('image/')) {
         const img = document.createElement('img');
         img.src = URL.createObjectURL(file);
         img.style.maxWidth = '100px';
@@ -144,11 +133,11 @@ fileInput.addEventListener('change', async (e) => {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
     uploadTask.on('state_changed',
-        (snapshot) => {
+        snapshot => {
             const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
             progressDiv.textContent = `Enviando ${file.name} (${percent}%)`;
         },
-        (error) => {
+        error => {
             console.error('Erro upload:', error);
             alert('Erro ao enviar arquivo: ' + error.message);
             progressDiv.remove();
@@ -176,10 +165,6 @@ fileInput.addEventListener('change', async (e) => {
         }
     );
 });
-
-
-
-
 
 
 // ------------------ Funções ------------------
