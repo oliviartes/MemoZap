@@ -54,9 +54,10 @@ const contactsListDiv = document.getElementById('contactsList');
 let currentUser = null;
 
 
-const fileInput = document.getElementById('fileInput');
-const previewDiv = document.getElementById('messagePreview');
-const messagesDiv = document.getElementById('messages');
+
+
+
+
 
 
 
