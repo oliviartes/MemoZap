@@ -7,7 +7,11 @@ body, html {
   background: #e0dad4;
 }
 
-.app { display: flex; height: 100vh; }
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
 
 /* ===== SIDEBAR ===== */
 .sidebar {
@@ -17,9 +21,13 @@ body, html {
   padding: 20px;
   display: flex;
   flex-direction: column;
+  transition: transform 0.3s ease-in-out;
 }
 
-.sidebar h1 { margin: 0 0 20px; }
+.sidebar h1 {
+  margin: 0 0 20px;
+  font-size: 1.5rem;
+}
 
 .primary-btn, .secondary-btn, .action-btn {
   margin: 5px 0;
@@ -27,6 +35,7 @@ body, html {
   border-radius: 5px;
   border: none;
   cursor: pointer;
+  font-size: 0.95rem;
 }
 
 .primary-btn { background: #23a6a0; color: #fff; }
@@ -42,15 +51,52 @@ body, html {
   flex-direction: column;
   justify-content: flex-end;
   padding: 20px;
+  background: #f9f9f9;
 }
 
+/* ===== CABEÇALHO DO CHAT ===== */
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar.small {
+  width: 40px;
+  height: 40px;
+  background: #23a6a0;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.active-name {
+  font-weight: 600;
+}
+
+.active-status {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* ===== MENSAGENS ===== */
 .messages {
   flex: 1;
   overflow-y: auto;
   margin-bottom: 10px;
 }
 
-/* ===== MENSAGENS ===== */
 .message {
   display: flex;
   flex-direction: column;
@@ -58,20 +104,15 @@ body, html {
   word-wrap: break-word;
 }
 
-.message.sent {
-  align-items: flex-end;
-}
+.message.sent { align-items: flex-end; }
+.message.received { align-items: flex-start; }
 
-.message.received {
-  align-items: flex-start;
-}
-
-/* Balão de texto */
 .message p {
   display: inline-block;
   padding: 10px 15px;
   border-radius: 20px;
-  max-width: 70%;
+  max-width: 80%;
+  word-break: break-word;
 }
 
 .message.sent p {
@@ -86,9 +127,9 @@ body, html {
   border-bottom-left-radius: 0;
 }
 
-/* Imagens enviadas no chat */
+/* ===== IMAGENS NO CHAT ===== */
 .message img.chat-image {
-  max-width: 150px;
+  max-width: 70%;
   border-radius: 15px;
   display: block;
   margin: 5px 0;
@@ -109,6 +150,11 @@ body, html {
 .input-area {
   display: flex;
   gap: 10px;
+  align-items: center;
+  background: #fff;
+  padding: 10px;
+  border-radius: 30px;
+  box-shadow: 0 0 3px rgba(0,0,0,0.1);
 }
 
 .input-area input[type="text"] {
@@ -116,6 +162,7 @@ body, html {
   padding: 10px;
   border-radius: 25px;
   border: 1px solid #ccc;
+  outline: none;
 }
 
 .input-area button {
@@ -125,18 +172,107 @@ body, html {
   background: #05635f;
   color: #fff;
   cursor: pointer;
+  transition: background 0.3s;
+}
+
+.input-area button:hover {
+  background: #034c4a;
 }
 
 /* ===== SCROLLBAR MENSAGENS ===== */
-.messages::-webkit-scrollbar {
-  width: 6px;
-}
-
+.messages::-webkit-scrollbar { width: 6px; }
 .messages::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.2);
   border-radius: 3px;
 }
+.messages::-webkit-scrollbar-track { background: transparent; }
 
-.messages::-webkit-scrollbar-track {
-  background: transparent;
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    transform: translateY(0);
+    padding: 15px;
+  }
+
+  .main {
+    padding: 10px;
+  }
+
+  .chat-header-left .avatar.small {
+    width: 35px;
+    height: 35px;
+    font-size: 0.9rem;
+  }
+
+  .input-area {
+    flex-direction: row;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .message p {
+    max-width: 90%;
+    font-size: 0.9rem;
+  }
+
+  .primary-btn, .secondary-btn, .action-btn {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    display: none;
+  }
+
+  .app {
+    flex-direction: column;
+  }
+
+  .main {
+    padding: 8px;
+  }
+
+  .input-area {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .message p {
+    max-width: 95%;
+    font-size: 0.85rem;
+  }
+}
+
+
+/* ===== BOTÃO FLUTUANTE ===== */
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #05635f;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  font-size: 32px;
+  line-height: 60px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  transition: background 0.2s, transform 0.2s;
+  z-index: 1000;
+}
+
+.fab:hover {
+  background-color: #04897e;
+  transform: scale(1.05);
 }

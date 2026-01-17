@@ -2,96 +2,112 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>MemoZap — Chat</title>
-
-  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-
-  <!-- Estilos -->
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { margin:0; padding:0; font-family:'Roboto',sans-serif; background:#fff; color:#000; }
+    .app { display:flex; height:100vh; overflow:hidden; background:#fff; }
+    .main { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding:15px; }
+    .chat-header { display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid #ccc; }
+    .chat-header-left { display:flex; align-items:center; gap:10px; }
+    .avatar.small { width:40px; height:40px; background:#23a6a0; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; }
+    .active-name { font-weight:600; }
+    .active-status { font-size:0.85rem; color:#666; }
+    .messages { flex:1; overflow-y:auto; margin-bottom:10px; }
+    .input-area { display:flex; gap:10px; align-items:center; background:#f9f9f9; padding:10px; border-radius:30px; box-shadow:0 0 3px rgba(0,0,0,0.1); flex-wrap:wrap; }
+    .input-area input[type=text] { flex:1; padding:10px; border-radius:25px; border:1px solid #ccc; outline:none; }
+    .input-area button { padding:0 15px; border:none; border-radius:25px; background:#05635f; color:#fff; cursor:pointer; transition:0.3s; }
+    .input-area button:hover { background:#034c4a; }
+    .fab { position:fixed; bottom:70px; right:15px; background:#fff; color:#05635f; border:none; border-radius:50%; width:50px; height:50px; font-size:28px; line-height:50px; text-align:center; cursor:pointer; box-shadow:0 4px 8px rgba(0,0,0,0.15); z-index:1000; }
+    .fab:hover { background:#f1f1f1; transform:scale(1.05); }
+    .modal { display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); }
+    .modal-content { background:#fff; margin:50px auto; padding:15px; border-radius:10px; width:90%; max-width:600px; height:400px; position:relative; display:flex; flex-direction:column; }
+    .modal-close { position:absolute; top:10px; right:15px; font-size:24px; font-weight:bold; color:#333; cursor:pointer; }
+    #map { flex:1; width:100%; border-radius:10px; margin-top:10px; }
+    #addressInput { padding:8px; border-radius:8px; border:1px solid #ccc; margin-bottom:5px; }
+    @media(max-width:768px){ .input-area{flex-direction:column; gap:5px;} .input-area input[type=text]{width:100%;} .modal-content{width:95%; height:350px; margin:40px auto;} }
+  </style>
 </head>
 <body>
-  <div id="app" class="app">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar" role="navigation">
-      <header class="sidebar-header">
-        <h1 class="brand">MemoZap <span class="brand-emoji">💬</span></h1>
-        <button id="themeToggle" class="icon-btn" title="Alternar tema">🌓</button>
-      </header>
-
-      <!-- LOGIN / REGISTRO -->
-      <section class="controls">
-        <input type="email" id="loginEmail" placeholder="Email" />
-        <input type="password" id="loginPassword" placeholder="Senha" />
-        <button id="loginBtn" class="primary-btn">Entrar</button>
-
-        <input type="email" id="registerEmail" placeholder="Email" />
-        <input type="password" id="registerPassword" placeholder="Senha" />
-        <button id="registerBtn" class="secondary-btn">Registrar</button>
-      </section>
-
-      <!-- AÇÕES DO USUÁRIO -->
-      <section class="actions">
-        <input type="email" id="addContactInput" placeholder="Email do contato" />
-        <button id="addContactBtn" class="action-btn">+ Adicionar Contato</button>
-        <button id="updateProfileBtn" class="action-btn">Atualizar Perfil</button>
-        <button id="updateEmailBtn" class="action-btn">Atualizar E-mail</button>
-        <button id="updatePasswordBtn" class="action-btn">Atualizar Senha</button>
-        <button id="sendVerificationBtn" class="action-btn">Enviar Verificação</button>
-        <button id="resetPasswordBtn" class="action-btn">Redefinir Senha</button>
-      </section>
-
-      <!-- LISTA DE CONTATOS -->
-      <section class="contacts-section">
-        <h2 class="section-title">Contatos</h2>
-        <div id="contactsList" class="contacts-list">
-          <!-- contatos serão injetados aqui -->
-        </div>
-      </section>
-
-      <footer class="sidebar-footer">
-        <small>© MemoZap</small>
-      </footer>
-    </aside>
-
-    <!-- MAIN -->
+  <div class="app">
     <main class="main">
-      <div class="chat-header">
+      <header class="chat-header">
         <div class="chat-header-left">
-          <div id="activeAvatar" class="avatar small">?</div>
+          <div class="avatar small">?</div>
           <div>
-            <div id="activeName" class="active-name">Selecione um contato</div>
-            <div id="activeStatus" class="active-status">Offline</div>
+            <div class="active-name">Selecione um contato</div>
+            <div class="active-status">Offline</div>
           </div>
         </div>
         <div class="chat-header-right">
-          <button id="callBtn" class="icon-btn" title="Chamada">📞</button>
-          <button id="moreBtn" class="icon-btn" title="Mais">⋯</button>
+          <button class="icon-btn" title="Anexar arquivo" id="uploadBtn">📎</button>
+          <a href="auth.html"><button class="icon-btn" title="Mais">⋯</button></a>
+          <input type="file" id="fileInput" hidden>
         </div>
-      </div>
+      </header>
 
-      <!-- MENSAGENS -->
-      <div id="messages" class="messages" aria-live="polite">
-        <!-- mensagens serão injetadas aqui -->
-      </div>
+      <div id="messages" class="messages" aria-live="polite"></div>
 
-      <!-- PREVIEW DA IMAGEM -->
-      <div id="messagePreview" class="message-preview"></div>
-
-      <!-- ÁREA DE ENTRADA -->
       <div class="input-area">
-        <input type="file" id="fileInput" hidden />
-        <button id="uploadBtn" title="Anexar arquivo">📎</button>
-        <input type="text" id="msgInput" placeholder="Digite uma mensagem..." />
+        <input type="text" id="msgInput" placeholder="Digite uma mensagem...">
         <button id="sendBtn" disabled>Enviar</button>
+        <button id="openMapBtn">🗺️ Abrir mapa</button>
+        <button id="shareLiveLocation">📍 Localização</button>
       </div>
     </main>
-
   </div>
 
-  <!-- Script principal -->
+  <button class="fab" id="newChatBtn">＋</button>
+
+  <div id="mapModal" class="modal">
+    <div class="modal-content">
+      <span id="closeMapModal" class="modal-close">&times;</span>
+      <input type="text" id="addressInput" placeholder="Digite um endereço e pressione Enter">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Firebase e outros módulos -->
+  <script type="module" src="firebaseConfig.js"></script>
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="upload.js"></script>
   <script type="module" src="chat.js"></script>
+  
+  <!-- Script do mapa -->
+  <script type="module">
+    import { initMap, goToAddress } from './mapa.js';
+
+    const mapModal = document.getElementById('mapModal');
+    const openMapBtn = document.getElementById('openMapBtn');
+    const closeMapModal = document.getElementById('closeMapModal');
+    const addressInput = document.getElementById('addressInput');
+
+    // Abrir modal do mapa
+    openMapBtn.addEventListener('click', () => {
+      mapModal.style.display = 'block';
+      if (!window.mapInitialized) {
+        initMap();
+        window.mapInitialized = true;
+      }
+      setTimeout(() => { if(window.map) window.map.invalidateSize(); }, 200);
+    });
+
+    // Fechar modal
+    closeMapModal.addEventListener('click', () => mapModal.style.display = 'none');
+    window.addEventListener('click', e => { if (e.target === mapModal) mapModal.style.display = 'none'; });
+
+    // Buscar endereço ao pressionar Enter
+    addressInput.addEventListener('keypress', e => {
+      if(e.key === 'Enter') {
+        const address = addressInput.value.trim();
+        if(address) goToAddress(address);
+      }
+    });
+  </script>
 </body>
 </html>

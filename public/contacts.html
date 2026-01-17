@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>MemoZap — Contatos</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #f7f8fa;
+      color: #333;
+    }
+    header {
+      background: #008069;
+      color: white;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 500;
+    }
+    #logoutBtn {
+      background: #ff4444;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #logoutBtn:hover {
+      background: #e63636;
+    }
+
+    main {
+      padding: 15px;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    form {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+
+    form label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 500;
+    }
+
+    form input, form select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
+
+    form button {
+      background: #008069;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      cursor: pointer;
+    }
+
+    form button:hover {
+      background: #006f5b;
+    }
+
+    .message-box {
+      text-align: center;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .message-success { background: #d4edda; color: #155724; }
+    .message-error { background: #f8d7da; color: #721c24; }
+
+    .contact-card {
+      background: white;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: 0.2s;
+    }
+    .contact-card:hover { transform: scale(1.02); }
+
+    .contact-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .contact-text { line-height: 1.2; }
+    .contact-name { font-weight: 500; }
+    .contact-details { font-size: 13px; color: #555; }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      background: #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      font-size: 18px;
+    }
+    .avatar-img {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+    .avatar-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .arrow {
+      font-size: 20px;
+      margin-right: 10px;
+      color: #333;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .status-online { background: #25d366; }
+    .status-offline { background: #ccc; }
+
+    #messageContainer { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📇 Meus Contatos</h1>
+    <button id="logoutBtn">Sair</button>
+  </header>
+
+  <main>
+    <div id="messageContainer"></div>
+
+    <form id="addContactForm">
+      <h3>Adicionar Contato</h3>
+      <label>Primeiro Nome:</label>
+      <input type="text" id="firstName" placeholder="Ex: Ana" required>
+
+      <label>Sobrenome:</label>
+      <input type="text" id="lastName" placeholder="Ex: Silva" required>
+
+      <label>País:</label>
+      <select id="country">
+        <option value="">Selecione o país</option>
+        <option value="Brasil:+55">Brasil (+55)</option>
+        <option value="Portugal:+351">Portugal (+351)</option>
+        <option value="EUA:+1">EUA (+1)</option>
+      </select>
+
+      <label>Telefone:</label>
+      <div style="display:flex; gap:5px; align-items:center;">
+        <span id="countryCodeLabel" style="min-width:35px;">+__</span>
+        <input type="tel" id="phone" placeholder="Número com DDD">
+      </div>
+
+      <label>Email (opcional):</label>
+      <input type="email" id="email" placeholder="exemplo@email.com">
+
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <div id="contactList"></div>
+  </main>
+
+  <script type="module">
+    import { auth, db } from './firebaseConfig.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { 
+      collection, getDocs, doc, deleteDoc, addDoc, query, where, getDoc, onSnapshot 
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const contactList = document.getElementById('contactList');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const addContactForm = document.getElementById('addContactForm');
+    const phoneInput = document.getElementById('phone');
+    const emailInput = document.getElementById('email');
+    const countrySelect = document.getElementById('country');
+    const firstNameInput = document.getElementById('firstName');
+    const lastNameInput = document.getElementById('lastName');
+    const messageContainer = document.getElementById('messageContainer');
+    const countryCodeLabel = document.getElementById('countryCodeLabel');
+
+    let currentUserUid = null;
+
+    countrySelect.addEventListener('change', () => {
+      const selected = countrySelect.value;
+      countryCodeLabel.textContent = selected ? selected.split(':')[1] : '+__';
+    });
+
+    function showMessage(msg, success=true){
+      messageContainer.innerHTML = `<div class="message-box ${success ? 'message-success':'message-error'}">${msg}</div>`;
+      setTimeout(()=> messageContainer.innerHTML='', 4000);
+    }
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ alert("Faça login primeiro!"); window.location.href="auth.html"; return; }
+      currentUserUid = user.uid;
+      carregarContatos(currentUserUid);
+    });
+
+    async function carregarContatos(uid){
+      const contactsCol = collection(db, "users", uid, "contacts");
+
+      onSnapshot(contactsCol, async (snapshot)=>{
+        contactList.innerHTML = '';
+        if(snapshot.empty){
+          contactList.innerHTML = "<p style='text-align:center; color:#555; margin:20px;'>Nenhum contato adicionado.</p>";
+          return;
+        }
+
+        for (const docSnap of snapshot.docs){
+          const c = docSnap.data();
+          if(!c.userUid) continue;
+
+          const userDataSnap = await getDoc(doc(db, "users", c.userUid));
+          const userData = userDataSnap.exists() ? userDataSnap.data() : {};
+
+          const div = document.createElement('div');
+          div.className = "contact-card";
+
+          // 🔹 Exibe foto do perfil se existir
+          const avatarHTML = userData.profilePic
+            ? `<div class="avatar-img"><img src="${userData.profilePic}" alt="Foto de ${c.firstName}"></div>`
+            : `<div class="avatar">${c.firstName[0].toUpperCase()}${c.lastName[0].toUpperCase()}</div>`;
+
+          div.innerHTML = `
+            <div class="contact-info" 
+              data-useruid="${c.userUid}" 
+              data-firstname="${c.firstName}" 
+              data-lastname="${c.lastName}" 
+              data-email="${c.email}">
+              ${avatarHTML}
+              <div class="contact-text">
+                <div class="contact-name">${c.firstName} ${c.lastName}</div>
+                <div class="contact-details">${c.country || ''} - ${c.phone || c.email || ''}</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center;">
+              <div class="arrow">➡</div>
+              <button class="delete-btn">🗑</button>
+            </div>
+          `;
+
+          contactList.appendChild(div);
+		  
+		  
+		  div.querySelector('.contact-info').addEventListener('click', () => {
+  const fullName = `${c.firstName} ${c.lastName}`.trim();
+  const contactToSelect = {
+    userUid: c.userUid,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    name: fullName, // 👈 adiciona o nome completo
+    email: c.email || '',
+    profilePic: userData.profilePic || '',
+  };
+  
+  // Salva no localStorage
+  localStorage.setItem('selectedContact', JSON.stringify(contactToSelect));
+
+  // Redireciona pro chat
+  window.location.href = "index.html";
+});
+
+		  
+		  
+		  
+
+          // 🔸 Excluir contato
+          div.querySelector('.delete-btn').addEventListener('click', async (e)=>{
+            e.stopPropagation();
+            if(confirm(`Deseja realmente excluir ${c.firstName} ${c.lastName}?`)){
+              await deleteDoc(doc(db, "users", uid, "contacts", docSnap.id));
+            }
+          });
+        }
+
+        atualizarAvatarRecente();
+      });
+    }
+
+    function atualizarAvatarRecente(){
+      const newPic = localStorage.getItem('newProfilePic');
+      const newUid = localStorage.getItem('newProfileUid');
+      if(newPic && newUid){
+        const imgEl = document.querySelector(`.contact-info[data-useruid="${newUid}"] img`);
+        if(imgEl){ imgEl.src = newPic; }
+        localStorage.removeItem('newProfilePic');
+        localStorage.removeItem('newProfileUid');
+      }
+    }
+
+    addContactForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const phone = phoneInput.value.trim();
+      const email = emailInput.value.trim();
+      const countryValue = countrySelect.value;
+      const [countryName, countryCode] = countryValue ? countryValue.split(':') : ['', ''];
+      if(!phone && !email){ showMessage("Digite telefone ou email!", false); return; }
+
+      const usersCol = collection(db, "users");
+      let q;
+      if(phone){ q = query(usersCol, where("phone","==",`${countryCode}${phone}`)); }
+      else if(email){ q = query(usersCol, where("email","==",email)); }
+
+      const snapshot = await getDocs(q);
+      if(snapshot.empty){ showMessage("Contato não encontrado no app!", false); return; }
+
+      const userDoc = snapshot.docs[0];
+      const userData = userDoc.data();
+
+      await addDoc(collection(db, "users", currentUserUid, "contacts"), {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        country: countryName,
+        countryCode: countryCode,
+        phone: userData.phone,
+        email: userData.email,
+        userUid: userDoc.id
+      });
+
+      showMessage("Contato adicionado com sucesso!");
+      addContactForm.reset();
+      countryCodeLabel.textContent = '+__';
+    });
+
+    logoutBtn.addEventListener('click', async ()=>{
+      await signOut(auth);
+      alert("Você saiu.");
+      window.location.href="auth.html";
+    });
+  </script>
+
+</body>
+</html>

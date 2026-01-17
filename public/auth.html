@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MemoZap — Autenticação</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body { background: #fff; font-family: 'Roboto', sans-serif; margin:0; padding:0; color:#000; }
+.auth-container { max-width:400px; margin:0 auto; padding:20px; }
+h1 { text-align:center; color:#05635f; margin-bottom:30px; }
+.auth-section { background:#f9f9f9; padding:20px; border-radius:12px; margin-bottom:20px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+.auth-section h2 { margin-top:0; color:#05635f; font-size:1.1rem; margin-bottom:15px; }
+.auth-section input, .auth-section select { width:100%; padding:10px 15px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; outline:none; font-size:0.95rem; }
+.auth-section button { width:100%; padding:10px; background:#05635f; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:1rem; margin-bottom:5px; transition:background 0.2s, transform 0.2s; }
+.auth-section button:hover { background:#04897e; transform:scale(1.02); }
+.profile-pic-container { text-align:center; margin-bottom:15px; }
+.profile-pic-container img { width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #05635f; cursor:pointer; }
+.back-btn { position:fixed; bottom:20px; right:20px; background-color:#05635f; color:white; border:none; border-radius:50%; width:55px; height:55px; font-size:24px; text-align:center; line-height:55px; cursor:pointer; box-shadow:0 4px 8px rgba(0,0,0,0.3); transition:background 0.2s, transform 0.2s; z-index:1000; }
+.back-btn:hover { background-color:#04897e; transform:scale(1.05); }
+</style>
+</head>
+<body>
+<div class="auth-container">
+  <h1>MemoZap 💬</h1>
+
+  <!-- Login -->
+  <section class="auth-section">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Senha">
+    <button id="loginBtn">Entrar</button>
+  </section>
+
+  <!-- Registro -->
+  <section class="auth-section">
+    <h2>Registrar</h2>
+    <input type="text" id="registerFirstName" placeholder="Nome">
+    <input type="text" id="registerLastName" placeholder="Sobrenome">
+    <select id="registerCountry" required>
+      <option value="" disabled selected>Selecione o país</option>
+      <option value="BR:+55">Brasil (+55)</option>
+      <option value="US:+1">Estados Unidos (+1)</option>
+      <option value="PT:+351">Portugal (+351)</option>
+      <option value="FR:+33">França (+33)</option>
+      <option value="DE:+49">Alemanha (+49)</option>
+    </select>
+    <input type="tel" id="registerPhone" placeholder="Telefone (opcional)">
+    <input type="email" id="registerEmail" placeholder="Email (opcional)">
+    <input type="password" id="registerPassword" placeholder="Senha (para email)">
+    <div class="profile-pic-container">
+      <img id="profilePicPreview" src="https://via.placeholder.com/100" title="Clique para escolher foto">
+      <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+    </div>
+    <button id="registerBtn">Registrar</button>
+  </section>
+
+  <!-- Botão voltar -->
+  <button class="back-btn" id="backBtn">⬅</button>
+</div>
+
+<script type="module">
+import { auth, db, storage } from './firebaseConfig.js';
+import {
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  updateProfile, sendEmailVerification, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { doc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+// Elementos
+const loginEmail = document.getElementById('loginEmail');
+const loginPassword = document.getElementById('loginPassword');
+const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn');
+const profilePicInput = document.getElementById('profilePicInput');
+const profilePicPreview = document.getElementById('profilePicPreview');
+const backBtn = document.getElementById('backBtn');
+
+// Selecionar foto
+profilePicPreview.addEventListener('click', () => profilePicInput.click());
+profilePicInput.addEventListener('change', () => {
+  const file = profilePicInput.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => profilePicPreview.src = e.target.result;
+    reader.readAsDataURL(file);
+  }
+});
+
+// --- Login ---
+loginBtn.addEventListener('click', async () => {
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value.trim();
+  if (!email || !password) return alert("Preencha email e senha!");
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    window.location.href = "index.html";
+  } catch (error) {
+    alert("Erro no login: " + error.message);
+  }
+});
+
+// --- Registro com upload de foto ---
+registerBtn.addEventListener('click', async () => {
+  const firstName = document.getElementById('registerFirstName').value.trim();
+  const lastName = document.getElementById('registerLastName').value.trim();
+  const countryValue = document.getElementById('registerCountry').value;
+  const phone = document.getElementById('registerPhone').value.trim();
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value.trim();
+  const profileFile = profilePicInput.files[0];
+
+  if (!firstName || !lastName || !countryValue || (!phone && !email)) {
+    return alert("Preencha todos os campos obrigatórios!");
+  }
+
+  const [countryName, countryCode] = countryValue.split(':');
+  const fullPhone = phone ? `${countryCode}${phone}` : null;
+
+  try {
+    // 1️⃣ Cria usuário
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // 2️⃣ Faz upload da foto se houver
+    let photoURL = "";
+    if (profileFile) {
+      const storageRef = ref(storage, `profilePics/${user.uid}/${profileFile.name}`);
+      await uploadBytes(storageRef, profileFile);
+      photoURL = await getDownloadURL(storageRef);
+    }
+
+    // 3️⃣ Atualiza displayName e photoURL no Auth
+    await updateProfile(user, { displayName: `${firstName} ${lastName}`, photoURL });
+
+    // 4️⃣ Salva no Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      firstName,
+      lastName,
+      phone: fullPhone || "",
+      email: email || "",
+      country: countryName,
+      countryCode,
+      profilePic: photoURL,
+      status: "online",
+      createdAt: new Date()
+    });
+
+    // 5️⃣ Redireciona para index
+    window.location.href = "index.html";
+
+  } catch (error) {
+    alert("Erro ao registrar: " + error.message);
+  }
+});
+
+// --- Botão voltar ---
+backBtn.addEventListener('click', () => {
+  window.location.href = "index.html";
+});
+</script>
+</body>
+</html>

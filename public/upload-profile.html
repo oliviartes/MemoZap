@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Perfil — MemoZap</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+  font-family:'Roboto', sans-serif;
+  background:#e5ddd5; margin:0; padding:0;
+  display:flex; justify-content:center; align-items:center; height:100vh;
+}
+.container {
+  max-width:380px; background:#fff;
+  border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
+  overflow:hidden; text-align:center; padding-bottom:20px;
+}
+header {
+  background:#05635f; color:#fff;
+  padding:16px; font-weight:600; font-size:1.2rem;
+}
+.profile-pic {
+  position:relative; width:160px; height:160px;
+  border-radius:50%; margin:20px auto;
+  background:#ccc; display:flex; align-items:center; justify-content:center;
+  font-size:3rem; font-weight:700; color:white;
+  overflow:hidden; cursor:pointer;
+  border:4px solid #05635f;
+}
+.profile-pic img {
+  width:100%; height:100%; object-fit:cover;
+}
+.edit-icon {
+  position:absolute; bottom:8px; right:8px;
+  background:#05635f; color:white;
+  border-radius:50%; width:36px; height:36px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem; cursor:pointer;
+  box-shadow:0 2px 5px rgba(0,0,0,0.3);
+}
+.profile-info { padding:0 20px 10px; }
+.profile-info div { margin:8px 0; font-size:1rem; color:#333; }
+#uploadProgress {
+  width:0%; height:8px; background:#05635f;
+  border-radius:4px; margin:10px auto; transition:width 0.3s ease;
+  max-width:80%;
+}
+button {
+  background:#05635f; color:white; border:none;
+  padding:10px 16px; border-radius:6px;
+  font-weight:600; cursor:pointer; transition:background 0.2s;
+}
+button:hover { background:#044d47; }
+#backBtn { background:#777; margin-top:10px; }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <header>Perfil</header>
+
+  <div class="profile-pic" id="profilePic">
+    <span id="profileInitials">A</span>
+    <div class="edit-icon" id="editIcon" title="Alterar foto">📷</div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" style="display:none" />
+  <div id="uploadProgress"></div>
+
+  <div class="profile-info">
+    <div><strong>Nome:</strong> <span id="profileName"></span></div>
+    <div><strong>Email:</strong> <span id="profileEmail"></span></div>
+    <div><strong>Telefone:</strong> <span id="profilePhone"></span></div>
+  </div>
+
+  <button id="backBtn">Voltar</button>
+</div>
+
+<script type="module">
+import { auth, db, storage } from './firebaseConfig.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+const profilePic = document.getElementById('profilePic');
+const profileInitials = document.getElementById('profileInitials');
+const editIcon = document.getElementById('editIcon');
+const fileInput = document.getElementById('fileInput');
+const progressBar = document.getElementById('uploadProgress');
+const profileName = document.getElementById('profileName');
+const profileEmail = document.getElementById('profileEmail');
+const profilePhone = document.getElementById('profilePhone');
+const backBtn = document.getElementById('backBtn');
+
+let currentUser = null;
+let profileToEditUid = localStorage.getItem("profileToEditUid");
+
+// 🔐 Verifica usuário logado
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    alert("Faça login primeiro!");
+    window.location.href = "auth.html";
+    return;
+  }
+  currentUser = user;
+  carregarPerfil();
+});
+
+async function carregarPerfil() {
+  if (!profileToEditUid) {
+    alert("Nenhum perfil selecionado!");
+    window.location.href = "contatos.html";
+    return;
+  }
+
+  const userRef = doc(db, "users", profileToEditUid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    alert("Perfil não encontrado!");
+    return;
+  }
+
+  const data = userSnap.data();
+  profileName.textContent = `${data.firstName || ''} ${data.lastName || ''}`;
+  profileEmail.textContent = data.email || '—';
+  profilePhone.textContent = data.phone || '—';
+
+  if (data.profilePic) {
+    profilePic.innerHTML = `<img src="${data.profilePic}" alt="Foto de perfil">`;
+    profilePic.appendChild(editIcon);
+  } else {
+    const initial = (data.firstName?.[0] || '?').toUpperCase();
+    profilePic.innerHTML = `<span id="profileInitials">${initial}</span>`;
+    profilePic.appendChild(editIcon);
+  }
+
+  if (currentUser.uid === profileToEditUid) {
+    editIcon.style.display = 'flex';
+    editIcon.addEventListener('click', () => fileInput.click());
+  } else {
+    editIcon.style.display = 'none';
+    profilePic.style.cursor = 'default';
+  }
+}
+
+// 📤 Upload da nova foto
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (currentUser.uid !== profileToEditUid) {
+    alert("❌ Você só pode alterar sua própria foto de perfil!");
+    return;
+  }
+
+  const filePath = `profilePics/${currentUser.uid}/${Date.now()}-${file.name}`;
+  const fileRef = ref(storage, filePath);
+  const uploadTask = uploadBytesResumable(fileRef, file);
+
+  uploadTask.on('state_changed',
+    (snapshot) => {
+      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      progressBar.style.width = progress + '%';
+    },
+    (error) => {
+      console.error(error);
+      alert("Erro no upload: " + error.message);
+    },
+    async () => {
+      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      await updateDoc(doc(db, "users", currentUser.uid), { profilePic: downloadURL });
+
+      // Atualiza preview
+      profilePic.innerHTML = `<img src="${downloadURL}" alt="Foto de perfil">`;
+      profilePic.appendChild(editIcon);
+      progressBar.style.width = '0%';
+
+      // 🔹 Salva no localStorage e redireciona para chat
+      localStorage.setItem('newProfilePic', downloadURL);
+      localStorage.setItem('newProfileUid', currentUser.uid);
+      window.location.href = 'index.html';
+    }
+  );
+});
+
+// 🔙 Botão Voltar
+backBtn.addEventListener('click', () => {
+  window.location.href = "contatos.html";
+});
+</script>
+</body>
+</html>
